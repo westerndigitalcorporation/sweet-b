@@ -1,0 +1,89 @@
+#
+# .travis.yml: Travis CI support
+#
+# SPDX-License-Identifier: BSD-3-Clause
+#
+# This file is part of Sweet B, a safe, compact, embeddable library for
+# elliptic curve cryptography.
+#
+# https://github.com/westerndigitalcorporation/sweet-b
+#
+# Copyright (c) 2020 Western Digital Corporation or its affiliates.
+#
+# Redistribution and use in source and binary forms, with or without
+# modification, are permitted provided that the following conditions are met:
+#
+# 1. Redistributions of source code must retain the above copyright notice,
+# this list of conditions and the following disclaimer.
+#
+# 2. Redistributions in binary form must reproduce the above copyright notice,
+# this list of conditions and the following disclaimer in the documentation
+# and/or other materials provided with the distribution.
+#
+# 3. Neither the name of the copyright holder nor the names of its contributors
+# may be used to endorse or promote products derived from this software without
+# specific prior written permission.
+#
+# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+# AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+# IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+# ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE
+# LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+# CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+# SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+# INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+# CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+# ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+# POSSIBILITY OF SUCH DAMAGE.
+#
+
+language: c
+
+matrix:
+  include:
+    - os: linux
+      compiler: gcc
+      dist: trusty
+      addons:
+        apt:
+          sources:
+            - ubuntu-toolchain-r-test
+          packages:
+            - gcc-7
+            - cmake3
+      env:
+        - C_COMPILER=gcc-7
+
+    - os: linux
+      compiler: clang
+      dist: trusty
+      env:
+        - ASAN_OPTIONS=detect_leaks=0
+        - C_COMPILER=clang
+
+    - os: linux
+      compiler: gcc
+      dist: trusty
+      addons:
+        apt:
+          packages:
+            - gcc-arm-linux-gnueabihf
+            - libc6-dev-armhf-cross
+            - qemu-user
+      env:
+        - CMAKE_EXTRA="-DCMAKE_TOOLCHAIN_FILE=arm.cmake"
+        - RUN_WRAP=qemu-arm
+
+#    - os: osx
+#      compiler: clang
+#      osx_image: xcode9
+
+before_script:
+  - mkdir cmake-build-debug
+  - cd cmake-build-debug
+  - cmake .. -DCMAKE_BUILD_TYPE=Debug -DCMAKE_C_COMPILER=$C_COMPILER $CMAKE_EXTRA
+
+script:
+  - make VERBOSE=1
+  - cd ..
+  - $RUN_WRAP ./cmake-build-debug/sb_test

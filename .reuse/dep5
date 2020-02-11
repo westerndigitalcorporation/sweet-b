@@ -1,0 +1,8 @@
+Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
+Upstream-Name: sweet-b
+Upstream-Contact: Brian Mastenbrook <brian.mastenbrook@wdc.com>
+Source: https://github.com/westerndigitalcorporation/sweet-b
+
+Files: cavp/*.rsp cavp/*.txt
+Copyright: National Institute of Standards and Technology (NIST)
+License: LicenseRef-NIST-1
