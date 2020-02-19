@@ -1318,9 +1318,8 @@ sb_error_t sb_sw_generate_private_key(sb_sw_context_t ctx[static const 1],
     SB_RETURN_ERRORS(err);
 
     for (size_t i = 0; i < SB_SW_FIPS186_4_CANDIDATES; i++) {
-        err |= sb_hmac_drbg_generate(drbg,
-                                     &ctx->param_gen.buf[i * SB_ELEM_BYTES],
-                                     SB_ELEM_BYTES);
+        err |= sb_hmac_drbg_generate_additional_dummy
+            (drbg, &ctx->param_gen.buf[i * SB_ELEM_BYTES], SB_ELEM_BYTES);
         SB_ASSERT(!err, "Private key generation should never fail.");
     }
 
@@ -2096,6 +2095,17 @@ sb_error_t sb_sw_sign_message_digest_start
                                                     &ctx->param_gen.buf[0],
                                                     SB_ELEM_BYTES, add,
                                                     add_len);
+
+        // Provide additional input on each subsequent call in order to
+        // ensure backtracking resistance in the DRBG.
+        for (size_t i = 1; i < SB_SW_FIPS186_4_CANDIDATES; i++) {
+            err |= sb_hmac_drbg_generate_additional_dummy
+                (drbg,
+                 &ctx->param_gen.buf[i * SB_ELEM_BYTES],
+                 SB_ELEM_BYTES);
+            SB_ASSERT(!err, "The DRBG should never fail to generate a "
+                            "per-message secret.");
+        }
     } else {
         // RFC6979 deterministic signature generation requires the scalar and
         // reduced message to be input to the DRBG in big-endian form.
@@ -2121,18 +2131,16 @@ sb_error_t sb_sw_sign_message_digest_start
                               0);
         SB_ASSERT(!err, "DRBG initialization should never fail.");
 
-        err |= sb_hmac_drbg_generate(&ctx->param_gen.drbg,
-                                     &ctx->param_gen.buf[0],
-                                     SB_ELEM_BYTES);
-    }
-
-    for (size_t i = 1; i < SB_SW_FIPS186_4_CANDIDATES; i++) {
-        err |= sb_hmac_drbg_generate(drbg,
-                                     &ctx->param_gen.buf[i *
-                                                         SB_ELEM_BYTES],
-                                     SB_ELEM_BYTES);
-        SB_ASSERT(!err, "The DRBG should never fail to generate a "
-                        "per-message secret.");
+        // This call to sb_hmac_drbg_generate can't be replaced by a call to
+        // sb_hmac_drbg_generate_additional_dummy as it would break
+        // compatibility with RFC6979 (and its test vectors).
+        for (size_t i = 0; i < SB_SW_FIPS186_4_CANDIDATES; i++) {
+            err |= sb_hmac_drbg_generate(drbg,
+                                         &ctx->param_gen.buf[i * SB_ELEM_BYTES],
+                                         SB_ELEM_BYTES);
+            SB_ASSERT(!err, "The DRBG should never fail to generate a "
+                            "per-message secret.");
+        }
     }
 
     err |= sb_sw_k_from_buf(ctx, fips186_4, s, e);
@@ -2143,11 +2151,18 @@ sb_error_t sb_sw_sign_message_digest_start
 
     // And now generate an initial Z. This uses the DRBG directly instead of
     // calling sb_sw_generate_z because the private key and message digest
-    // have already been supplied as input to the DRBG.
-
-    err |= sb_hmac_drbg_generate(drbg,
-                                 ctx->param_gen.buf, 4 * SB_ELEM_BYTES);
+    // have already been supplied as input to the DRBG. Dummy additional
+    // input is provided instead in order to ensure backtracking resistance
+    // of the DRBG.
+    err |= sb_hmac_drbg_generate_additional_dummy(drbg,
+                                                  ctx->param_gen.buf,
+                                                  4 * SB_ELEM_BYTES);
     SB_ASSERT(!err, "The DRBG should never fail to generate a Z value.");
+
+    if (!fips186_4) {
+        // Nullify the RFC6979 DRBG before returning the context.
+        SB_NULLIFY(&ctx->param_gen.drbg);
+    }
 
     err |= sb_sw_z_from_buf(ctx, s, e);
 

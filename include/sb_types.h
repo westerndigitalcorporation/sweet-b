@@ -155,7 +155,10 @@ typedef enum sb_error_value_t {
 
     /** The \c _finish routine was called, but the operation was not yet
      *  finished. */
-        SB_ERROR_NOT_FINISHED = 1u << 11u
+        SB_ERROR_NOT_FINISHED = 1u << 11u,
+
+    /** Additional input was required by the DRBG, but not provided. */
+        SB_ERROR_ADDITIONAL_INPUT_REQUIRED = 1u << 12u,
 } sb_error_value_t;
 
 /* Non-public definitions used in private context structures follow. These

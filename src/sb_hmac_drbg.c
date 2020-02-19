@@ -185,11 +185,12 @@ sb_error_t sb_hmac_drbg_init(sb_hmac_drbg_state_t drbg[static const restrict 1],
     return SB_SUCCESS;
 }
 
-sb_error_t sb_hmac_drbg_generate_additional_vec
+static sb_error_t sb_hmac_drbg_generate_additional_vec_opt
     (sb_hmac_drbg_state_t drbg[static const restrict 1],
      sb_byte_t* restrict output, size_t const output_len,
      const sb_byte_t* const additional[static const SB_HMAC_DRBG_ADD_VECTOR_LEN],
-     const size_t additional_len[static const SB_HMAC_DRBG_ADD_VECTOR_LEN])
+     const size_t additional_len[static const SB_HMAC_DRBG_ADD_VECTOR_LEN],
+     _Bool const additional_required)
 {
     sb_error_t err = 0;
 
@@ -204,6 +205,15 @@ sb_error_t sb_hmac_drbg_generate_additional_vec
     size_t total_additional_len = 0;
     for (size_t i = 0; i < SB_HMAC_DRBG_ADD_VECTOR_LEN; i++) {
         total_additional_len += additional_len[i];
+    }
+
+    if ((additional_required
+#ifdef SB_TEST
+        || drbg->additional_input_required
+#endif
+        )
+    && (total_additional_len == 0)) {
+        err |= SB_ERROR_ADDITIONAL_INPUT_REQUIRED;
     }
 
     if (total_additional_len > SB_HMAC_DRBG_MAX_ADDITIONAL_INPUT_LENGTH) {
@@ -257,23 +267,48 @@ sb_error_t sb_hmac_drbg_generate_additional_vec
     return SB_SUCCESS;
 }
 
+sb_error_t sb_hmac_drbg_generate_additional_vec
+    (sb_hmac_drbg_state_t drbg[static const restrict 1],
+     sb_byte_t* restrict output, size_t const output_len,
+     const sb_byte_t* const additional[static const SB_HMAC_DRBG_ADD_VECTOR_LEN],
+     const size_t additional_len[static const SB_HMAC_DRBG_ADD_VECTOR_LEN])
+{
+    return sb_hmac_drbg_generate_additional_vec_opt
+        (drbg, output, output_len, additional, additional_len, 1);
+}
+
 sb_error_t sb_hmac_drbg_generate(sb_hmac_drbg_state_t
                                  drbg[static const restrict 1],
                                  sb_byte_t* const output,
                                  size_t const output_len)
 {
-    const sb_byte_t* additional[SB_HMAC_DRBG_ADD_VECTOR_LEN] = { NULL };
-    const size_t additional_len[SB_HMAC_DRBG_ADD_VECTOR_LEN] = { 0 };
-    return sb_hmac_drbg_generate_additional_vec(drbg, output, output_len,
-                                                additional, additional_len);
+    static const sb_byte_t* const
+        additional[SB_HMAC_DRBG_ADD_VECTOR_LEN] = { NULL };
+    static const size_t additional_len[SB_HMAC_DRBG_ADD_VECTOR_LEN] = { 0 };
+    return sb_hmac_drbg_generate_additional_vec_opt(drbg, output, output_len,
+                                                    additional, additional_len,
+                                                    0);
+}
+
+static const sb_byte_t SB_HMAC_DRBG_ADDITIONAL_DUMMY[1] = { 0 };
+
+sb_error_t sb_hmac_drbg_generate_additional_dummy(sb_hmac_drbg_state_t
+                                                  drbg[static const restrict 1],
+                                                  sb_byte_t* const output,
+                                                  size_t const output_len)
+{
+    const sb_byte_t* additional[SB_HMAC_DRBG_ADD_VECTOR_LEN] =
+        { SB_HMAC_DRBG_ADDITIONAL_DUMMY };
+    const size_t additional_len[SB_HMAC_DRBG_ADD_VECTOR_LEN] =
+        { sizeof(SB_HMAC_DRBG_ADDITIONAL_DUMMY) };
+    return sb_hmac_drbg_generate_additional_vec_opt
+        (drbg, output, output_len, additional, additional_len, 1);
 }
 
 #ifdef SB_TEST
 
-// Every test is initialized with entropy and a nonce. Not every test
-// includes personalization data or additional data on generate calls. Thus,
-// TEST_Pn, TEST_An, and TEST_AAn are one byte larger than they ordinarily
-// would be, so that empty data is represented with a one-byte array.
+// This is one test from the CAVP sample vectors; the rest of the tests are
+// exercised in a file-driven test.
 
 static const sb_byte_t TEST_E1[] = {
     0xca, 0x85, 0x19, 0x11, 0x34, 0x93, 0x84, 0xbf, 0xfe, 0x89, 0xde, 0x1c,
@@ -284,10 +319,6 @@ static const sb_byte_t TEST_N1[] = {
     0x65, 0x9b, 0xa9, 0x6c, 0x60, 0x1d, 0xc6, 0x9f, 0xc9, 0x02, 0x94, 0x08,
     0x05, 0xec, 0x0c, 0xa8
 };
-
-static const sb_byte_t TEST_P1[] = { 0 };
-static const sb_byte_t TEST_A1[] = { 0 };
-static const sb_byte_t TEST_AA1[] = { 0 };
 
 static const sb_byte_t TEST_R1[] = {
     0xe5, 0x28, 0xe9, 0xab, 0xf2, 0xde, 0xce, 0x54, 0xd4, 0x7c, 0x7e, 0x75,
@@ -307,21 +338,13 @@ _Bool sb_test_hmac_drbg(void)
 {
     sb_byte_t r[128];
     sb_hmac_drbg_state_t drbg;
-    const sb_byte_t* add[SB_HMAC_DRBG_ADD_VECTOR_LEN] = { NULL };
-    size_t add_len[SB_HMAC_DRBG_ADD_VECTOR_LEN] = { 0 };
     SB_TEST_ASSERT_SUCCESS(
         sb_hmac_drbg_init(&drbg, TEST_E1, sizeof(TEST_E1), TEST_N1,
-                          sizeof(TEST_N1), TEST_P1 + 1, sizeof(TEST_P1) - 1));
-    add[0] = TEST_A1 + 1;
-    add_len[0] = sizeof(TEST_A1) - 1;
+                          sizeof(TEST_N1), NULL, 0));
     SB_TEST_ASSERT_SUCCESS(
-        sb_hmac_drbg_generate_additional_vec(&drbg, r, sizeof(TEST_R1),
-                                             add, add_len));
-    add[0] = TEST_AA1 + 1;
-    add_len[0] = sizeof(TEST_AA1) - 1;
+        sb_hmac_drbg_generate(&drbg, r, sizeof(TEST_R1)));
     SB_TEST_ASSERT_SUCCESS(
-        sb_hmac_drbg_generate_additional_vec(&drbg, r, sizeof(TEST_R1),
-                                             add, add_len));
+        sb_hmac_drbg_generate(&drbg, r, sizeof(TEST_R1)));
     SB_TEST_ASSERT_EQUAL(r, TEST_R1, sizeof(TEST_R1));
     return 1;
 }

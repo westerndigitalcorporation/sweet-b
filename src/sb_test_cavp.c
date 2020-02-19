@@ -522,17 +522,26 @@ sb_test_cavp_hmac_drbg(const char* file, const char* name, size_t section)
         const sb_byte_t* add[SB_HMAC_DRBG_ADD_VECTOR_LEN] = { NULL };
         size_t add_len[SB_HMAC_DRBG_ADD_VECTOR_LEN] = { 0 };
 
-        add[0] = extra_1.buf;
-        add_len[0] = extra_1.len;
-        SB_TEST_ASSERT_SUCCESS(
-            sb_hmac_drbg_generate_additional_vec(&drbg, output_act,
-                                                 output.len, add, add_len));
+        if (extra_1.len) {
+            add[0] = extra_1.buf;
+            add_len[0] = extra_1.len;
+            SB_TEST_ASSERT_SUCCESS(
+                sb_hmac_drbg_generate_additional_vec(&drbg, output_act,
+                                                     output.len, add, add_len));
+        } else {
+            SB_TEST_ASSERT_SUCCESS(
+                sb_hmac_drbg_generate(&drbg, output_act, output.len));
+        }
 
-        add[0] = extra_2.buf;
-        add_len[0] = extra_2.len;
-        SB_TEST_ASSERT_SUCCESS(
-            sb_hmac_drbg_generate_additional_vec(&drbg, output_act,
-                                                 output.len, add, add_len));
+        if (extra_2.len) {
+            add[0] = extra_2.buf;
+            add_len[0] = extra_2.len;
+            SB_TEST_ASSERT_SUCCESS(
+                sb_hmac_drbg_generate_additional_vec(&drbg, output_act,
+                                                     output.len, add, add_len));
+        } else {
+            sb_hmac_drbg_generate(&drbg, output_act, output.len);
+        }
 
         SB_TEST_ASSERT_EQUAL(output_act[0], output.buf[0], output.len);
 

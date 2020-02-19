@@ -43,10 +43,16 @@
 
 static const sb_byte_t NULL_ENTROPY[32] = { 0 };
 
+// Initialize a DRBG used for semi-randomized testing. Also sets the
+// additional_input_required flag so that all curve operations can be checked
+// for whether they provide additional input to the DRBG to ensure
+// backtracking resistance.
+
 #define NULL_DRBG_INIT(drbg) \
     do { \
         SB_TEST_ASSERT_SUCCESS(sb_hmac_drbg_init((drbg), NULL_ENTROPY, 32, \
             NULL_ENTROPY, 32, NULL, 0)); \
+        (drbg)->additional_input_required = 1; \
     } while (0)
 
 #define SB_TEST_RAND_COUNT 128
@@ -442,7 +448,8 @@ static _Bool test_sw_point_mult_add(const sb_fe_t* const ka,
 static _Bool generate_fe(sb_fe_t* const fe, sb_hmac_drbg_state_t* const drbg)
 {
     sb_single_t s;
-    SB_TEST_ASSERT_SUCCESS(sb_hmac_drbg_generate(drbg, s.bytes, SB_ELEM_BYTES));
+    SB_TEST_ASSERT_SUCCESS(sb_hmac_drbg_generate_additional_dummy
+                               (drbg, s.bytes, SB_ELEM_BYTES));
     sb_fe_from_bytes(fe, s.bytes, SB_DATA_ENDIAN_BIG);
     return 1;
 }
@@ -1618,8 +1625,8 @@ static _Bool sb_test_decompress_rand_c(const sb_sw_curve_id_t c,
     sb_hmac_drbg_state_t drbg;
     NULL_DRBG_INIT(&drbg);
     do {
-        SB_TEST_ASSERT_SUCCESS(sb_hmac_drbg_generate(&drbg, x.bytes,
-                                                     SB_ELEM_BYTES));
+        SB_TEST_ASSERT_SUCCESS(sb_hmac_drbg_generate_additional_dummy
+                                   (&drbg, x.bytes, SB_ELEM_BYTES));
         sb_error_t err = sb_sw_decompress_public_key(&ct, &p, &x,
                                                      0, c, e);
         SB_TEST_ASSERT(err == SB_SUCCESS || err == SB_ERROR_PUBLIC_KEY_INVALID);
@@ -1751,7 +1758,8 @@ static _Bool sb_test_sign_iter_c(const sb_sw_curve_id_t c,
             sb_sw_generate_private_key(&ct, &d, &drbg, c, e));
         SB_TEST_ASSERT_SUCCESS(
             sb_sw_compute_public_key(&ct, &p, &d, &drbg, c, e));
-        sb_hmac_drbg_generate(&drbg, m.bytes, sizeof(m.bytes));
+        SB_TEST_ASSERT_SUCCESS(sb_hmac_drbg_generate_additional_dummy
+                                   (&drbg, m.bytes, sizeof(m.bytes)));
         SB_TEST_ASSERT_SUCCESS(
             sb_sw_sign_message_digest(&ct, &s, &d, &m, &drbg, c, e));
         SB_TEST_ASSERT_SUCCESS(
