@@ -62,7 +62,7 @@ these findings and recommendations are detailed below.
 |--------------|---------------|-----------|----------|
 | [*TOB-SB-004*](#tob-sb-004-debug-definitions-may-violate-layout-invariants-relied-on-by-assembly) | Medium        | Debug definitions may violate layout invariants relied on by assembly | Not yet remediated |
 | [*TOB-SB-003*](#tob-sb-003-c-library-routines-may-violate-timing-guarantees) | Low           | C library routines may violate timing guarantees. | See below |
-| [*TOB-SB-001*](#tob-sb-001-debug-asserts-violate-timing-guarantees) | Low           | Debug asserts violate timing guarantees | Not yet remediated |
+| [*TOB-SB-001*](#tob-sb-001-debug-asserts-violate-timing-guarantees) | Low           | Debug asserts violate timing guarantees | Remediated |
 | [*TOB-SB-006*](#tob-sb-006-hmac_drbg-does-not-provide-backtracking-resistance-without-additional-input) | Low           | HMAC_DRBG does not provide backtracking resistance without additional input | Not yet remediated |
 | [*TOB-SB-002*](#tob-sb-002-sdl-mandates-use-of-annex-k-bounds-checking-interfaces) | Informational | SDL mandates use of Annex K bounds-checking interfaces | See below |
 | [*TOB-SB-005*](#tob-sb-005-apis-for-ecdsa-signing-and-verification-do-not-enforce-secure-hashing) | Informational | APIs for ECDSA signing and verification do not enforce secure hashing | Not yet remediated |
@@ -104,9 +104,10 @@ behavior.
 
 ## TOB-SB-001: Debug asserts violate timing guarantees
 
-This finding will be remediated by ensuring that debug asserts can only be
-enabled when compiling the unit test harness. Attempting to enable debug
-asserts in other configurations will result in a preprocessor error.
+This finding has been remediated in commit [`e8ccfb3`](https://github.com/westerndigitalcorporation/sweet-b/commit/e8ccfb3e6f99ccf1b48897c7cbc85aab7d1ce17d)
+by ensuring that debug asserts can only be enabled when compiling the unit
+test harness. Attempting to enable debug asserts in other configurations
+will result in a preprocessor error.
 
 ## TOB-SB-006: HMAC_DRBG does not provide backtracking resistance without additional input
 
