@@ -66,7 +66,7 @@ these findings and recommendations are detailed below.
 | [*TOB-SB-006*](#tob-sb-006-hmac_drbg-does-not-provide-backtracking-resistance-without-additional-input) | Low           | HMAC_DRBG does not provide backtracking resistance without additional input | Not yet remediated |
 | [*TOB-SB-002*](#tob-sb-002-sdl-mandates-use-of-annex-k-bounds-checking-interfaces) | Informational | SDL mandates use of Annex K bounds-checking interfaces | See below |
 | [*TOB-SB-005*](#tob-sb-005-apis-for-ecdsa-signing-and-verification-do-not-enforce-secure-hashing) | Informational | APIs for ECDSA signing and verification do not enforce secure hashing | Not yet remediated |
-| [Non-security findings](#non-security-related-findings) | N/A     | Several typos and code quality suggestions | Not yet remediated |
+| [Non-security findings](#non-security-related-findings) | N/A     | Several typos and code quality suggestions | Remediated |
 | [Long-term recommendations](#long-term-recommendations) | N/A | Several API, documentation, and build structure suggestions | Not yet incorporated |
 | [Additional unit testing](#additional-unit-testing) | N/A | Improvement of unit test coverage | Not yet incorporated |
 
@@ -188,7 +188,7 @@ signatures will be recommended for use over `sb_sw_sign_message_digest`.
 
 ## Non-security-related findings
 
-These findings have not yet been remediated.
+These findings have been remediated in commit [`aae5c71`](https://github.com/westerndigitalcorporation/sweet-b/commit/aae5c713f87a0589f38a07bd3f41820ebf2e1e7a).
 
 ## Long-term recommendations
 
