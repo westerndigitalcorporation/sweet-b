@@ -342,6 +342,11 @@ typedef sb_word_t sb_uword_t;
 #define SB_FE_VERIFY_QR 0
 #endif
 
+// SB_FE_VERIFY_QR can only be used when executing unit tests.
+#if SB_FE_VERIFY_QR && !defined(SB_TEST)
+#error "SB_FE_VERIFY_QR is invalid outside of unit tests"
+#endif
+
 /** @fn SB_FE_CONST_QR(w3, w2, w1, w0, prime)
  *  @brief Helper macro for a constant field element value. Like \ref
  *  SB_FE_CONST, but defines a constant that is quasi-reduced with respect to
@@ -422,6 +427,39 @@ static const sb_fe_t SB_FE_ZERO = SB_FE_CONST(0, 0, 0, 0);
 #define SB_FE_ASSERT_QR(fe, prime) do { } while (0)
 #endif
 
+/** @var SB_FE_ASM
+ *  @brief If \ref SB_FE_ASM is defined as non-zero, then assembly support
+ *  for Sweet B is assumed to be supplied.
+ *
+ *  The following routines will not be defined by \c sb_fe.c and must be
+ *  supplied by assembly:
+ *    - \ref sb_fe_equal
+ *    - \ref sb_fe_test_bit
+ *    - \ref sb_fe_add
+ *    - \ref sb_fe_sub_borrow
+ *    - \ref sb_fe_lt
+ *    - \ref sb_fe_cond_sub_p
+ *    - \ref sb_fe_cond_add_p_1
+ *    - \ref sb_fe_ctswap
+ *    - \ref sb_fe_mont_mult
+ *
+ *  Currently, assembly support implies that \ref SB_WORD_SIZE is equal to 4.
+ *  Additionally, \ref SB_FE_VERIFY_QR conflicts with layout assumptions made
+ *  by the assembly code, and so must be disabled when assembly is enabled.
+ */
+
+#ifndef SB_FE_ASM
+#define SB_FE_ASM 0
+#endif
+
+#if SB_FE_ASM && SB_FE_VERIFY_QR
+#error "SB_FE_VERIFY_QR can't be enabled compiling with assembly"
+#endif
+
+#if SB_FE_ASM && SB_WORD_SIZE != 4
+#error "SB_WORD_SIZE must be 4 when compiling with assembly"
+#endif
+
 /** @brief The definition of a prime field.
  *
  * Sweet B uses Montgomery multiplication. As such, \ref
@@ -459,6 +497,13 @@ typedef struct sb_prime_field_t {
     /** The number of bits in the prime. */
     sb_bitcount_t bits;
 } sb_prime_field_t;
+
+// Assembly assumes that p_mp is at a fixed offset based on the size of sb_fe_t.
+#if SB_FE_ASM
+_Static_assert(offsetof(sb_prime_field_t, p_mp) == SB_ELEM_BYTES,
+    "sb_prime_field_t layout invariant broken; assembly will not function "
+    "correctly");
+#endif
 
 /**
  * @brief Bytes to field element conversion.

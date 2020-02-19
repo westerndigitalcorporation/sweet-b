@@ -194,6 +194,11 @@ typedef struct sb_fe_t {
 #endif
 } sb_fe_t;
 
+#if !defined(SB_FE_VERIFY_QR) || SB_FE_VERIFY_QR == 0
+_Static_assert(sizeof(sb_fe_t) == SB_ELEM_BYTES, "sizeof(sb_fe_t) must be "
+                                                 "SB_ELEM_BYTES");
+#endif
+
 /* This structure is used in opaque curve operation context structures. */
 typedef struct sb_fe_pair_t {
     sb_fe_t x, y;

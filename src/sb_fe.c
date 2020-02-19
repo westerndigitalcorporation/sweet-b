@@ -43,11 +43,6 @@
 #include "sb_fe.h"
 #include "sb_sw_curves.h"
 
-/* If assembly is provided for low-level routines, define SB_FE_ASM to 1 */
-#ifndef SB_FE_ASM
-#define SB_FE_ASM 0
-#endif
-
 // Convert an appropriately-sized set of bytes (src) into a field element
 // using the given endianness.
 void sb_fe_from_bytes(sb_fe_t dest[static const restrict 1],
