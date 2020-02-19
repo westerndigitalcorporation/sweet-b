@@ -60,15 +60,15 @@ these findings and recommendations are detailed below.
 
 | *Finding*    | *Severity*    | *Summary* | *Status* |
 |--------------|---------------|-----------|----------|
-| *TOB-SB-004* | Medium        | Debug definitions may violate layout invariants relied on by assembly | Not yet remediated |
-| *TOB-SB-003* | Low           | C library routines may violate timing guarantees. | See below |
-| *TOB-SB-001* | Low           | Debug asserts violate timing guarantees | Not yet remediated |
-| *TOB-SB-006* | Low           | HMAC_DRBG does not provide backtracking resistance without additional input | Not yet remediated |
-| *TOB-SB-002* | Informational | SDL mandates use of Annex K bounds-checking interfaces | See below |
-| *TOB-SB-005* | Informational | APIs for ECDSA signing and verification do not enforce secure hashing | Not yet remediated |
-| Non-security findings | N/A     | Several typos and code quality suggestions | Not yet remediated |
-| Long-term recommendations | N/A | Several API, documentation, and build structure suggestions | Not yet incorporated |
-| Additional unit testing | N/A | Improvement of unit test coverage | Not yet incorporated |
+| [*TOB-SB-004*](#tob-sb-004-debug-definitions-may-violate-layout-invariants-relied-on-by-assembly) | Medium        | Debug definitions may violate layout invariants relied on by assembly | Not yet remediated |
+| [*TOB-SB-003*](#tob-sb-003-c-library-routines-may-violate-timing-guarantees) | Low           | C library routines may violate timing guarantees. | See below |
+| [*TOB-SB-001*](#tob-sb-001-debug-asserts-violate-timing-guarantees) | Low           | Debug asserts violate timing guarantees | Not yet remediated |
+| [*TOB-SB-006*](#tob-sb-006-hmac_drbg-does-not-provide-backtracking-resistance-without-additional-input) | Low           | HMAC_DRBG does not provide backtracking resistance without additional input | Not yet remediated |
+| [*TOB-SB-002*](#tob-sb-002-sdl-mandates-use-of-annex-k-bounds-checking-interfaces) | Informational | SDL mandates use of Annex K bounds-checking interfaces | See below |
+| [*TOB-SB-005*](#tob-sb-005-apis-for-ecdsa-signing-and-verification-do-not-enforce-secure-hashing) | Informational | APIs for ECDSA signing and verification do not enforce secure hashing | Not yet remediated |
+| [Non-security findings](#non-security-related-findings) | N/A     | Several typos and code quality suggestions | Not yet remediated |
+| [Long-term recommendations](#long-term-recommendations) | N/A | Several API, documentation, and build structure suggestions | Not yet incorporated |
+| [Additional unit testing](#additional-unit-testing) | N/A | Improvement of unit test coverage | Not yet incorporated |
 
 ## TOB-SB-004: Debug definitions may violate layout invariants relied on by assembly
 
