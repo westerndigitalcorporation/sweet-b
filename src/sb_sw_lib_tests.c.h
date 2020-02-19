@@ -49,6 +49,8 @@ static const sb_byte_t NULL_ENTROPY[32] = { 0 };
             NULL_ENTROPY, 32, NULL, 0)); \
     } while (0)
 
+#define SB_TEST_RAND_COUNT 128
+
 // De-incrementalized point multiplication wrapper for unit tests.
 static void
 sb_sw_point_mult(sb_sw_context_t m[static const 1],
@@ -1446,7 +1448,7 @@ _Bool sb_test_sw_point_mult_add_rand(void)
     sb_hmac_drbg_state_t drbg;
     NULL_DRBG_INIT(&drbg);
 
-    for (size_t i = 0; i < 64; i++) {
+    for (size_t i = 0; i < SB_TEST_RAND_COUNT; i++) {
         SB_TEST_ASSERT(generate_fe(&ka, &drbg));
         SB_TEST_ASSERT(generate_fe(&kb, &drbg));
         SB_TEST_ASSERT(generate_fe(&kc, &drbg));
@@ -1533,7 +1535,7 @@ static _Bool sb_test_invert_iter_c(const sb_sw_curve_id_t c,
             sb_hmac_drbg_reseed(&drbg, TEST_PRIV_1.bytes, sizeof(TEST_PRIV_1),
                                 TEST_PRIV_2.bytes, sizeof(TEST_PRIV_2)));
         i++;
-    } while (i < 128);
+    } while (i < SB_TEST_RAND_COUNT);
     return 1;
 }
 
@@ -1581,7 +1583,7 @@ static _Bool sb_test_decompress_iter_c(const sb_sw_curve_id_t c,
                                 TEST_PRIV_2.bytes, sizeof(TEST_PRIV_2))
         );
         i++;
-    } while (i < 128);
+    } while (i < SB_TEST_RAND_COUNT);
     return 1;
 }
 
@@ -1648,7 +1650,7 @@ static _Bool sb_test_decompress_rand_c(const sb_sw_curve_id_t c,
                                 TEST_PRIV_2.bytes, sizeof(TEST_PRIV_2))
         );
         i++;
-    } while (i < 128);
+    } while (i < SB_TEST_RAND_COUNT);
 
     SB_TEST_ASSERT(found_valid && found_invalid);
     return 1;
@@ -1713,7 +1715,7 @@ static _Bool sb_test_shared_iter_c(const sb_sw_curve_id_t c,
                                 TEST_PRIV_2.bytes, sizeof(TEST_PRIV_2))
         );
         i++;
-    } while (i < 128);
+    } while (i < SB_TEST_RAND_COUNT);
     return 1;
 }
 
@@ -1759,7 +1761,7 @@ static _Bool sb_test_sign_iter_c(const sb_sw_curve_id_t c,
                                 TEST_PRIV_2.bytes, sizeof(TEST_PRIV_2))
         );
         i++;
-    } while (i < 128);
+    } while (i < SB_TEST_RAND_COUNT);
     return 1;
 }
 

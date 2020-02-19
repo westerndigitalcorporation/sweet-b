@@ -70,7 +70,7 @@ int main(const int argc, char** const argv)
 #endif
 {
     int option;
-    uintmax_t test_iter = 8192;
+    uintmax_t test_iter = SB_TEST_ITER_DEFAULT;
     _Bool test_iter_supplied = 0;
     const char* test_iter_match = NULL;
 #ifdef SB_TEST_TIS

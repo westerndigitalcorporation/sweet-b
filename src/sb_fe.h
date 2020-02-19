@@ -146,6 +146,10 @@ typedef size_t sb_bitcount_t;
 
 #if SB_WORD_SIZE == 8
 
+#if !defined(__SIZEOF_INT128__) ||  __SIZEOF_INT128__ != 16
+#error "SB_WORD_SIZE is 8, but your platform does not appear to define __uint128_t"
+#endif
+
 typedef __uint128_t sb_dword_t;
 
 #define SB_WORD_C(v) UINT64_C(v)
@@ -241,7 +245,7 @@ typedef sb_word_t sb_uword_t;
  *
  *  - At level 2, the outer field-element multiplication loop and inner loop are
  *  unrolled, along with field element additive and subtractive operations.
- *  This provides most of the possible unrolling performance beneit with modest
+ *  This provides most of the possible unrolling performance benefit with modest
  *  impact on code size.
  *
  *  - At level 3, all of the above unrolling is applied, and field element

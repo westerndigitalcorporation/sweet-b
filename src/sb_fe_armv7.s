@@ -55,7 +55,7 @@
 /* Constant time equality comparison
 
 sb_word_t sb_fe_equal(const sb_fe_t left[static const 1],
-                         const sb_fe_t right[static const 1])
+                      const sb_fe_t right[static const 1])
 
 r0 = left, r1 = right
 return value in r0
