@@ -63,7 +63,7 @@ these findings and recommendations are detailed below.
 | [*TOB-SB-004*](#tob-sb-004-debug-definitions-may-violate-layout-invariants-relied-on-by-assembly) | Medium        | Debug definitions may violate layout invariants relied on by assembly | Remediated |
 | [*TOB-SB-003*](#tob-sb-003-c-library-routines-may-violate-timing-guarantees) | Low           | C library routines may violate timing guarantees. | See below |
 | [*TOB-SB-001*](#tob-sb-001-debug-asserts-violate-timing-guarantees) | Low           | Debug asserts violate timing guarantees | Remediated |
-| [*TOB-SB-006*](#tob-sb-006-hmac_drbg-does-not-provide-backtracking-resistance-without-additional-input) | Low           | HMAC_DRBG does not provide backtracking resistance without additional input | Not yet remediated |
+| [*TOB-SB-006*](#tob-sb-006-hmac_drbg-does-not-provide-backtracking-resistance-without-additional-input) | Low           | HMAC_DRBG does not provide backtracking resistance without additional input | Remediated |
 | [*TOB-SB-002*](#tob-sb-002-sdl-mandates-use-of-annex-k-bounds-checking-interfaces) | Informational | SDL mandates use of Annex K bounds-checking interfaces | See below |
 | [*TOB-SB-005*](#tob-sb-005-apis-for-ecdsa-signing-and-verification-do-not-enforce-secure-hashing) | Informational | APIs for ECDSA signing and verification do not enforce secure hashing | Not yet remediated |
 | [Non-security findings](#non-security-related-findings) | N/A     | Several typos and code quality suggestions | Remediated |
@@ -113,13 +113,14 @@ will result in a preprocessor error.
 
 ## TOB-SB-006: HMAC_DRBG does not provide backtracking resistance without additional input
 
-This finding will be remediated by providing a new API
-`sb_hmac_drbg_generate_additional_dummy` which provides static additional
-input to the HMAC_DRBG generate routine, and by using this API in all
-contexts where additional input is not otherwise available, with the
-exception of RFC6979 signing. The existing `sb_hmac_drbg_generate` API will
-be retained for compliance with [NIST SP 800-90A Rev. 1](https://csrc.nist.gov/publications/detail/sp/800-90a/rev-1/final), but the new API will be
-recommended for use.
+This finding has been remediated in commit [`75c5f58`](https://github.com/westerndigitalcorporation/sweet-b/commit/75c5f5893021dc94d764857ebc35fe4c32cc6422)
+by providing a new API `sb_hmac_drbg_generate_additional_dummy` which
+provides static additional input to the HMAC_DRBG generate routine, and by
+using this API in all contexts where additional input is not otherwise
+available, with the exception of RFC6979 signing. The existing
+`sb_hmac_drbg_generate` API has beenretained for compliance with
+[NIST SP 800-90A Rev. 1](https://csrc.nist.gov/publications/detail/sp/800-90a/rev-1/final),
+but the new API is recommended for use instead.
 
 ## TOB-SB-002: SDL mandates use of Annex K bounds-checking interfaces
 
