@@ -52,6 +52,9 @@ Sweet B is a library which implements public key elliptic curve cryptography
 * *Compact:* the library is compact in code size, uses a minimal 512-byte
   working context, and does not assume that keys and other intermediary products
   can be allocated on the stack.
+* *Audited:* a third-party review of the library was carried out prior to public
+ release, and the full report and status of remediations are [available
+  publicly](audit/audit.md).
 
 You should consider using Sweet B if you need to implement elliptic curve 
 Diffie-Hellman shared-secret generation (ECDH) or elliptic curve digital 
@@ -69,6 +72,13 @@ of cryptographic algorithms.
 ## Where did Sweet B come from?
 
 Sweet B was developed by [Western Digital](https://www.westerndigital.com/).
+
+## How was Sweet B reviewed?
+
+Western Digital engaged the security research firm
+[Trail of Bits](https://www.trailofbits.com) to review Sweet B prior to its
+ public release. The resulting report and the status of remediations for
+  specific findings are [available publicly](audit/audit.md).
 
 ## How does Sweet B protect against known attacks on ECC?
 
