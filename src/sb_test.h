@@ -42,7 +42,14 @@
 #ifndef SB_TEST_H
 #define SB_TEST_H
 
-#if defined(SB_DEBUG_ASSERTS) || defined(SB_TEST)
+#if defined(SB_DEBUG_ASSERTS)
+
+// Debug asserts can only be used when running unit tests as they may
+// otherwise violate constant-time behavior.
+#ifndef SB_TEST
+#error "SB_DEBUG_ASSERTS is invalid outside of unit tests"
+#endif
+
 #include <assert.h>
 #define SB_ASSERT(e, s) assert((e) && (s)[0])
 #else
