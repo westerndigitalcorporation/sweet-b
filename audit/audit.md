@@ -60,7 +60,7 @@ these findings and recommendations are detailed below.
 
 | *Finding*    | *Severity*    | *Summary* | *Status* |
 |--------------|---------------|-----------|----------|
-| [*TOB-SB-004*](#tob-sb-004-debug-definitions-may-violate-layout-invariants-relied-on-by-assembly) | Medium        | Debug definitions may violate layout invariants relied on by assembly | Not yet remediated |
+| [*TOB-SB-004*](#tob-sb-004-debug-definitions-may-violate-layout-invariants-relied-on-by-assembly) | Medium        | Debug definitions may violate layout invariants relied on by assembly | Remediated |
 | [*TOB-SB-003*](#tob-sb-003-c-library-routines-may-violate-timing-guarantees) | Low           | C library routines may violate timing guarantees. | See below |
 | [*TOB-SB-001*](#tob-sb-001-debug-asserts-violate-timing-guarantees) | Low           | Debug asserts violate timing guarantees | Remediated |
 | [*TOB-SB-006*](#tob-sb-006-hmac_drbg-does-not-provide-backtracking-resistance-without-additional-input) | Low           | HMAC_DRBG does not provide backtracking resistance without additional input | Not yet remediated |
@@ -72,9 +72,11 @@ these findings and recommendations are detailed below.
 
 ## TOB-SB-004: Debug definitions may violate layout invariants relied on by assembly
 
-This finding will be remediated by ensuring that debug defines cannot be
-enabled if assembly support is compiled in, and as per TOB-SB-001, that
-debug definitions cannot be used outside the unit testing harness.
+This finding has been remediated in commit
+[`2180aa8`](https://github.com/westerndigitalcorporation/sweet-b/commit/2180aa81c5aef5a128541b642d05134a42fd1033)
+by ensuring that debug defines cannot be enabled if assembly support is
+compiled in, and as per TOB-SB-001, that debug definitions cannot be used
+outside the unit testing harness.
 
 ## TOB-SB-003: C library routines may violate timing guarantees
 
