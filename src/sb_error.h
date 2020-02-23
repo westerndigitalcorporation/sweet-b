@@ -46,15 +46,9 @@
 
 #include <string.h>
 
-#ifdef __STDC_LIB_EXT1__
-#define SB_NULLIFY(ptr) do { \
-    memset_s((ptr), sizeof(*(ptr)), 0, sizeof(*(ptr))); \
-} while (0)
-#else
 #define SB_NULLIFY(ptr) do { \
     memset((ptr), 0, sizeof(*(ptr))); \
 } while (0)
-#endif
 
 #define SB_ERROR_IF(err, cond) ((-(sb_error_t) (cond)) & (sb_error_t) \
 SB_ERROR_## err)
