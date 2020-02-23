@@ -65,7 +65,7 @@ these findings and recommendations are detailed below.
 | [*TOB-SB-001*](#tob-sb-001-debug-asserts-violate-timing-guarantees) | Low           | Debug asserts violate timing guarantees | Remediated |
 | [*TOB-SB-006*](#tob-sb-006-hmac_drbg-does-not-provide-backtracking-resistance-without-additional-input) | Low           | HMAC_DRBG does not provide backtracking resistance without additional input | Remediated |
 | [*TOB-SB-002*](#tob-sb-002-sdl-mandates-use-of-annex-k-bounds-checking-interfaces) | Informational | SDL mandates use of Annex K bounds-checking interfaces | See below |
-| [*TOB-SB-005*](#tob-sb-005-apis-for-ecdsa-signing-and-verification-do-not-enforce-secure-hashing) | Informational | APIs for ECDSA signing and verification do not enforce secure hashing | Not yet remediated |
+| [*TOB-SB-005*](#tob-sb-005-apis-for-ecdsa-signing-and-verification-do-not-enforce-secure-hashing) | Informational | APIs for ECDSA signing and verification do not enforce secure hashing | Remediated |
 | [Non-security findings](#non-security-related-findings) | N/A     | Several typos and code quality suggestions | Remediated |
 | [Long-term recommendations](#long-term-recommendations) | N/A | Several API, documentation, and build structure suggestions | Not yet incorporated |
 | [Additional unit testing](#additional-unit-testing) | N/A | Improvement of unit test coverage | Not yet incorporated |
@@ -168,8 +168,10 @@ sanitizers and other mitigations in conjunction with extensive testing.
 
 ## TOB-SB-005: APIs for ECDSA signing and verification do not enforce secure hashing
 
-This finding will be remediated by providing additional APIs as recommended
-which more completely encapsulate the needed message digest step:
+This finding has been remediated in commit
+[`e2e5de6`](https://github.com/westerndigitalcorporation/sweet-b/commit/e2e5de6777ac0850ffdeac73fa5d43439aec34b0)
+by providing additional APIs as recommended which more completely encapsulate
+the needed message digest step:
 
 * a complete `sb_sha256_message` API, which produces a digest
   for an entire message;
@@ -183,10 +185,10 @@ which more completely encapsulate the needed message digest step:
   before starting incremental signing of the digest; and
 * a corresponding `sb_sw_verify_signature_sha256_start` API.
   
-The existing `sb_sw_sign_message_digest` signature will be retained for use
+The existing `sb_sw_sign_message_digest` signature has been retained for use
 cases where the message is not available in one contiguous block of
 memory and the message digest is needed in multiple contexts, but the other
-signatures will be recommended for use over `sb_sw_sign_message_digest`.
+signatures are be recommended for use over `sb_sw_sign_message_digest`.
 
 ## Non-security-related findings
 
