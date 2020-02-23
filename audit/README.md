@@ -68,7 +68,7 @@ these findings and recommendations are detailed below.
 | [*TOB-SB-005*](#tob-sb-005-apis-for-ecdsa-signing-and-verification-do-not-enforce-secure-hashing) | Informational | APIs for ECDSA signing and verification do not enforce secure hashing | Remediated |
 | [Non-security findings](#non-security-related-findings) | N/A     | Several typos and code quality suggestions | Remediated |
 | [Long-term recommendations](#long-term-recommendations) | N/A | Several API, documentation, and build structure suggestions | Not yet incorporated |
-| [Additional unit testing](#additional-unit-testing) | N/A | Improvement of unit test coverage | Not yet incorporated |
+| [Additional unit testing](#additional-unit-testing) | N/A | Improvement of unit test coverage | Partially incorporated |
 
 ## TOB-SB-004: Debug definitions may violate layout invariants relied on by assembly
 
@@ -206,7 +206,7 @@ These findings have been remediated in commit [`aae5c71`](https://github.com/wes
   a high priority if the correct offset is asserted at compile time. When
   debugging asserts are not enabled, this offset should be stable on all
   reasonable platforms, and alternative solutions would complicate
-  cross-compliation.
+  cross-compilation.
 * Additional hash functions are not planned in the near-term future, but
   more unit tests would certainly be added if new hash functions were
   incorporated.
@@ -216,12 +216,15 @@ These findings have been remediated in commit [`aae5c71`](https://github.com/wes
 In Appendix C of the report, Trail of Bits provided an analysis of unit test
 coverage and made several suggestions:
 
-* One routine (`sb_fe_rshift`) in `sb_fe_tests.c.h` is uncovered. This will
-  be remediated by removing the routine.
-* Error handling code in the HMAC_DRBG implementation is uncovered. This will
-  be remediated by adding additional unit tests.
-* Two edge cases in `sb_sw_lib.c` are uncovered. This will be remediated by
-  adding additional unit tests.
+* One routine (`sb_fe_rshift`) in `sb_fe_tests.c.h` was uncovered. This was
+  remediated by removing the routine in commit
+  [`e2c4d98`](https://github.com/westerndigitalcorporation/sweet-b/commit/e2c4d9827b448f8bda753c2667b13ed1004e52aa).
+* Error handling code in the HMAC_DRBG implementation was uncovered. This was
+  remediated by adding an additional unit test in commit
+  [`a6561da`](https://github.com/westerndigitalcorporation/sweet-b/commit/a6561daf8e7932ca8bb8b71ea8b1f9750b2c865d).
+* Two edge cases in `sb_sw_lib.c` were uncovered. This was remediated by
+  adding additional unit tests in commit
+  [`0cc50e6`](https://github.com/westerndigitalcorporation/sweet-b/commit/0cc50e6f95e3d004d1e3d7875e963416378c23e1).
 * A number of field-element routines in `sb_fe.c` are not covered directly;
   rather, they are covered by higher-level tests of curve operations. This
   will be remediated by adding additional unit tests.
