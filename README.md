@@ -166,9 +166,15 @@ setting the preprocessor defines `SB_SW_P256_SUPPORT` or
 `SB_SW_SECP256K1_SUPPORT` to 0. If you have a little more program memory 
 available, you may want to set `SB_UNROLL` to a value between 1 and 3 
 (inclusive); on Cortex-M4, `SB_UNROLL=2` provides the best balance between 
-size and speed. Sweet B will also attempt to detect ARM processors which 
-support DSP extensions and use the `UMAAL` instruction for multiplication; 
-see [`sb_fe.c`](src/sb_fe.c) if this autodetection does not work for you.
+size and speed.
+
+If you have ARM support for your processor (see [`sb_fe_armv7.s`](src/sb_fe_armv7.s)
+for an example of this); define `SB_FE_ASM` to 1 when compiling the code, and
+supply a separate ARM assembly implementation for the core field-element
+arithmetic routines listed in [`sb_fe.h`](src/sb_fe.h) as being supported by
+assembly. The supplied example implementation targets 32-bit ARM Thumb
+processors with DSP extensions; examples of this include the Cortex-M4, M7, and
+A5.
 
 [CMake](https://cmake.org/) build support is provided; to use it, create a
 directory for your build, run `cmake` with the path to the Sweet B sources, and
