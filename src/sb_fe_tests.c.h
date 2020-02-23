@@ -47,30 +47,15 @@
 static void sb_fe_rshift_w(sb_fe_t a[static const 1], const sb_bitcount_t bits)
 {
     sb_word_t carry = 0;
+
+    SB_ASSERT(bits < SB_WORD_BITS, "invalid shift in sb_fe_rshift_w");
+
     for (size_t i = SB_FE_WORDS - 1; i <= SB_FE_WORDS; i--) {
         sb_word_t word = SB_FE_WORD(a, i);
         SB_FE_WORD(a, i) = (sb_word_t) (((sb_uword_t) word >> bits) |
                                         (sb_uword_t) carry);
         carry = (sb_word_t) (word << (SB_WORD_BITS - bits));
     }
-
-    SB_FE_UNQR(a);
-}
-
-// If the shift is more than the number of bits in a word, then whole words
-// get shifted and bits is reduced accordingly.
-static void sb_fe_rshift(sb_fe_t a[static const 1], sb_bitcount_t bits)
-{
-    while (bits > SB_WORD_BITS) {
-        sb_word_t carry = 0;
-        for (size_t i = SB_FE_WORDS - 1; i <= SB_FE_WORDS; i--) {
-            sb_word_t word = SB_FE_WORD(a, i);
-            SB_FE_WORD(a, i) = carry;
-            carry = word;
-        }
-        bits -= SB_WORD_BITS;
-    }
-    sb_fe_rshift_w(a, bits);
 
     SB_FE_UNQR(a);
 }
@@ -99,7 +84,7 @@ _Bool sb_test_fe(void)
 
     // all 0xFF
     SB_TEST_ASSERT(sb_fe_sub(&res, &SB_FE_ZERO, &SB_FE_ONE) == 1);
-    sb_fe_rshift(&res, 1);
+    sb_fe_rshift_w(&res, 1);
     // 0xFFFF.....FFFE
     SB_TEST_ASSERT(sb_fe_add(&res, &res, &res) == 0);
     // 0xFFFF.....FFFF
