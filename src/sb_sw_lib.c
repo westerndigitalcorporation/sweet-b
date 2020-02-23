@@ -1080,7 +1080,7 @@ static _Bool sb_sw_verify_continue(sb_sw_context_t v[static const 1])
             sb_sw_point_mult_add_z_continue(v);
             return 0;
         }
-        default: {
+        case SB_SW_VERIFY_OP_STAGE_TEST: {
             // This happens when p is some multiple of g that occurs within
             // the ladder, such that additions inadvertently produce a point
             // doubling. When that occurs, the private scalar that generated p is
@@ -1123,6 +1123,9 @@ static _Bool sb_sw_verify_continue(sb_sw_context_t v[static const 1])
             state.stage = SB_SW_VERIFY_OP_DONE;
             *MULT_STATE(v) = state;
             return 1;
+        }
+        default: {
+            return state.stage == SB_SW_VERIFY_OP_DONE;
         }
     }
 }

@@ -867,6 +867,11 @@ _Bool sb_test_sign_rfc6979_sha256(void)
                                                                   &finished));
     } while (!finished);
 
+    // Also test "over-continuing" signing
+    SB_TEST_ASSERT_SUCCESS(sb_sw_sign_message_digest_continue(&ct,
+                                                              &finished));
+    SB_TEST_ASSERT(finished);
+
     SB_TEST_ASSERT_SUCCESS(
         sb_sw_sign_message_digest_finish(&ct, &out, SB_DATA_ENDIAN_BIG));
 
@@ -886,6 +891,10 @@ _Bool sb_test_sign_rfc6979_sha256(void)
     do {
         SB_TEST_ASSERT_SUCCESS(sb_sw_verify_signature_continue(&ct, &finished));
     } while (!finished);
+
+    // Also test "over-continuing" verification
+    SB_TEST_ASSERT_SUCCESS(sb_sw_verify_signature_continue(&ct, &finished));
+    SB_TEST_ASSERT(finished);
 
     SB_TEST_ASSERT_SUCCESS(sb_sw_verify_signature_finish(&ct));
 
@@ -1555,7 +1564,7 @@ _Bool sb_test_sw_point_mult_add_rand(void)
 static _Bool sb_test_invert_iter_c(const sb_sw_curve_id_t c,
                                    const sb_data_endian_t e)
 {
-    sb_sw_private_t d, d2, k, k_inv;
+    sb_sw_private_t d, d2, k, k_inv, k_inv_2;
     sb_sw_public_t p, p2, p3;
     sb_sw_shared_secret_t s, s2, s3;
     sb_sw_context_t ct;
@@ -1598,6 +1607,12 @@ static _Bool sb_test_invert_iter_c(const sb_sw_curve_id_t c,
         // s2 = (((G^d)^k)^d2)^k_inv
         SB_TEST_ASSERT_SUCCESS(sb_sw_invert_private_key(&ct, &k_inv, &k,
                                                         &drbg, c, e));
+
+        // Verify the same result is returned if no DRBG is supplied
+        SB_TEST_ASSERT_SUCCESS(sb_sw_invert_private_key(&ct, &k_inv_2, &k,
+                                                        NULL, c, e));
+        SB_TEST_ASSERT_EQUAL(k_inv, k_inv_2);
+
         SB_TEST_ASSERT_SUCCESS(sb_sw_shared_secret(&ct, &s2, &k_inv, &p3,
                                                    &drbg, c, e));
 
