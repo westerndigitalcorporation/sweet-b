@@ -80,6 +80,7 @@ SB_DEFINE_TEST(shared_secret);
 SB_DEFINE_TEST(shared_secret_cavp_1);
 SB_DEFINE_TEST(shared_secret_secp256k1);
 SB_DEFINE_TEST(sign_rfc6979);
+SB_DEFINE_TEST(sign_rfc6979_sha256);
 SB_DEFINE_TEST(sign_secp256k1);
 SB_DEFINE_TEST(sign_catastrophe);
 SB_DEFINE_TEST(verify);

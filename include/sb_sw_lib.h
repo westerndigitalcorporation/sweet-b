@@ -546,12 +546,54 @@ extern sb_error_t sb_sw_point_multiply_finish
      sb_sw_public_t output[static 1],
      sb_data_endian_t e);
 
+/** Signs the SHA256 digest of the supplied message using the provided private
+ *  key. If a \p drbg is supplied, it will be used for the per-message secret
+ *  generation as per FIPS 186-4. The private key and message are used as
+ *  additional input to the \p drbg to ensure that the per-message secret is
+ *  always unique per (private key, message) combination. If no \p drbg is
+ *  supplied, RFC6979 deterministic secret generation is used instead.
+ *
+ *  @param [in] context Private context structure allocated by the caller.
+ *  @param [out] digest Computed digest of the supplied \p input.
+ *  @param [out] signature Generated signature of the \p digest of the supplied
+ *  \p input.
+ *  @param [in] private Supplied private key to use for the signature operation.
+ *  @param [in] input Input message to be signed.
+ *  @param [in] input_len Length of \p input bytes.
+ *  @param [in,out] drbg Optional DRBG to use for randomized signing. Will
+ *  also be used to generate entropy for side-channel mitigations if supplied.
+ *  @param [in] curve Curve on which to generate the signature.
+ *  @param [in] e Endianness of the private key, message digest, and
+ *  signature. Use big endian for most situations.
+ *  @return On success, \ref SB_SUCCESS. Fails if the supplied curve or
+ *  private key are invalid, if the optionally supplied DRBG requires
+ *  reseeding, or in the case of DRBG failure.
+ */
+extern sb_error_t sb_sw_sign_message_sha256
+    (sb_sw_context_t context[static 1],
+     sb_sw_message_digest_t digest[static 1],
+     sb_sw_signature_t signature[static 1],
+     const sb_sw_private_t private[static 1],
+     const sb_byte_t* input,
+     size_t input_len,
+     sb_hmac_drbg_state_t* drbg,
+     sb_sw_curve_id_t curve,
+     sb_data_endian_t e);
+
 /** Signs the 32-byte message digest using the provided private key. If a \p
  *  drbg is supplied, it will be used for the per-message secret generation
  *  as per FIPS 186-4. The private key and message are used as additional
  *  input to the \p drbg to ensure that the per-message secret is always
  *  unique per (private key, message) combination. If no \p drbg is
  *  supplied, RFC6979 deterministic secret generation is used instead.
+ *
+ *  It is recommended to use \ref sb_sw_sign_message_sha256 or
+ *  \ref sb_sw_sign_message_sha256_start whenever possible. This routine is
+ *  provided for use cases where a 256-bit message digest is already available,
+ *  and has presumably been computed using \ref sb_sha256_finish. If using this
+ *  with message digests from other sources, you are responsible for ensuring
+ *  that you are using a secure hash function. Do NOT call this routine with
+ *  hashes of a different size (e.g. SHA-224 or SHA-512).
  *
  *  @param [in] context Private context structure allocated by the caller.
  *  @param [out] signature Generated signature of the supplied \p message
@@ -600,6 +642,29 @@ extern sb_error_t sb_sw_sign_message_digest_start
      sb_sw_curve_id_t curve,
      sb_data_endian_t e);
 
+/** Finishes computing the SHA256 hash of previously provided input, and begins
+ *  signing the resulting 32-byte message digest using the provided private key.
+ *
+ *  @param [in] context Private context structure allocated by the caller.
+ *  @param [in,out] sha SHA256 state to use to obtain the message digest.
+ *  @param [in] private Supplied private key to use for the signature operation.
+ *  @param [in,out] drbg Optional DRBG to use for randomized signing. Will
+ *  also be used to generate entropy for side-channel mitigations if supplied.
+ *  @param [in] curve Curve on which to generate the signature.
+ *  @param [in] e Endianness of the private key, message digest, and
+ *  signature. Use big endian for most situations.
+ *  @return On success, \ref SB_SUCCESS. Fails if the supplied curve or
+ *  private key are invalid, if the optionally supplied DRBG requires
+ *  reseeding, or in the case of DRBG failure.
+ */
+extern sb_error_t sb_sw_sign_message_sha256_start
+    (sb_sw_context_t context[static 1],
+     sb_sha256_state_t sha[static 1],
+     const sb_sw_private_t private[static 1],
+     sb_hmac_drbg_state_t* drbg,
+     sb_sw_curve_id_t curve,
+     sb_data_endian_t e);
+
 /** Continues signing the 32-byte message digest using the provided private key.
  *
  *  @param [in] context Private context structure allocated by the caller.
@@ -627,8 +692,48 @@ extern sb_error_t sb_sw_sign_message_digest_finish
      sb_sw_signature_t signature[static 1],
      sb_data_endian_t e);
 
+/** Verifies a supplied signature of the SHA256 digest of a provided message
+ *  using a given public key.
+ *
+ *  @param [in] context Private context structure allocated by the caller.
+ *  @param [out] digest Computed digest of the supplied \p input.
+ *  @param [in] signature Signature to verify using the given \p public key
+ *  and \p message digest.
+ *  @param [in] public Public key to use for signature verification. Will be
+ *  checked for validity before use.
+ *  @param [in] input Input message to be verified.
+ *  @param [in] input_len Length of \p input bytes.
+ *  @param [in,out] drbg Optional DRBG, used to generate entropy for
+ *  side-channel mitigations.
+ *  @param [in] curve Curve on which to generate the signature.
+ *  @param [in] e Endianness of the public key, message digest, and
+ *  signature. Use big endian for most situations.
+ *  @return Returns SB_SUCCESS if the signature is valid or
+ *  SB_ERROR_SIGNATURE_INVALID exclusively if the signature is invalid. Fails
+ *  if the supplied curve or public key is invalid, if the optionally
+ *  supplied drbg requires reseeding, or in the case of DRBG failure.
+ */
+extern sb_error_t sb_sw_verify_signature_sha256
+    (sb_sw_context_t context[static 1],
+     sb_sw_message_digest_t digest[static 1],
+     const sb_sw_signature_t signature[static 1],
+     const sb_sw_public_t public[static 1],
+     const sb_byte_t* input,
+     size_t input_len,
+     sb_hmac_drbg_state_t* drbg,
+     sb_sw_curve_id_t curve,
+     sb_data_endian_t e);
+
 /** Verifies a supplied signature of a given message digest with a given
  *  public key.
+ *
+ *  It is recommended to use \ref sb_sw_verify_signature_sha256 or
+ *  \ref sb_sw_verify_signature_sha256_start whenever possible. This routine is
+ *  provided for use cases where a 256-bit message digest is already available,
+ *  and has presumably been computed using \ref sb_sha256_finish. If using this
+ *  with message digests from other sources, you are responsible for ensuring
+ *  that you are using a secure hash function. Do NOT call this routine with
+ *  hashes of a different size (e.g. SHA-224 or SHA-512).
  *
  *  @param [in] context Private context structure allocated by the caller.
  *  @param [in] signature Signature to verify using the given \p public key
@@ -655,7 +760,8 @@ extern sb_error_t sb_sw_verify_signature(sb_sw_context_t context[static 1],
                                          sb_data_endian_t e);
 
 /** Begins verifying a supplied signature of a given message digest with a given
- *  public key.
+ *  public key. See \ref sb_sw_verify_signature for notes on how to use this
+ *  method.
  *
  *  @param [in] context Private context structure allocated by the caller.
  *  @param [in] signature Signature to verify using the given \p public key
@@ -677,6 +783,34 @@ extern sb_error_t sb_sw_verify_signature_start
      const sb_sw_signature_t signature[static 1],
      const sb_sw_public_t public[static 1],
      const sb_sw_message_digest_t message[static 1],
+     sb_hmac_drbg_state_t* drbg,
+     sb_sw_curve_id_t curve,
+     sb_data_endian_t e);
+
+/** Finishes computing the SHA256 hash of a message, and begins verifying the
+ *  supplied signature of the resulting digest with a given public key.
+ *  See \ref sb_sw_verify_signature for notes on how to use this method.
+ *
+ *  @param [in] context Private context structure allocated by the caller.
+ *  @param [in,out] sha SHA256 state to use to obtain the message digest.
+ *  @param [in] signature Signature to verify using the given \p public key
+ *  and \p message digest.
+ *  @param [in] public Public key to use for signature verification. Will be
+ *  checked for validity before use.
+ *  @param [in,out] drbg Optional DRBG, used to generate entropy for
+ *  side-channel mitigations.
+ *  @param [in] curve Curve on which to generate the signature.
+ *  @param [in] e Endianness of the public key, message digest, and
+ *  signature. Use big endian for most situations.
+ *  @return Returns SB_SUCCESS if verification has been started. Fails
+ *  if the supplied curve or public key is invalid, if the optionally
+ *  supplied drbg requires reseeding, or in the case of DRBG failure.
+ */
+extern sb_error_t sb_sw_verify_signature_sha256_start
+    (sb_sw_context_t context[static 1],
+     sb_sha256_state_t sha[static 1],
+     const sb_sw_signature_t signature[static 1],
+     const sb_sw_public_t public[static 1],
      sb_hmac_drbg_state_t* drbg,
      sb_sw_curve_id_t curve,
      sb_data_endian_t e);

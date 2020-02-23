@@ -168,22 +168,20 @@ sanitizers and other mitigations in conjunction with extensive testing.
 
 ## TOB-SB-005: APIs for ECDSA signing and verification do not enforce secure hashing
 
-This finding will be remediated by providing additional APIs which more
-completely encapsulate the needed message digest step:
+This finding will be remediated by providing additional APIs as recommended
+which more completely encapsulate the needed message digest step:
 
-* as recommended, a complete `sb_sha256_message` API, which produces a digest
+* a complete `sb_sha256_message` API, which produces a digest
   for an entire message;
 * a complete `sb_hmac_sha256` API to parallel the `sb_sha256_message` API;
 * a complete `sb_sw_sign_message_sha256` API, which takes an entire message
-  as input;
+  as input and provides its signature and digest as output;
 * a complete `sb_sw_verify_signature_sha256` API, which takes an entire
-  message as input;
-* a `sb_sw_sign_message_sha256_finish` API, which takes a `sb_sha256_state_t`
+  message as input and verifies the signature while providing its digest;
+* a `sb_sw_sign_message_sha256_start API`, which takes a `sb_sha256_state_t`
   and internally calls `sb_sha256_finish` to produce the message digest
-  before signing it, and a corresponding `_start` version of the routine for
-  incremental use; and
-* a corresponding `sb_sw_verify_signature_sha256_finish` API and `_start`
-  variant for incremental use.
+  before starting incremental signing of the digest; and
+* a corresponding `sb_sw_verify_signature_sha256_start` API.
   
 The existing `sb_sw_sign_message_digest` signature will be retained for use
 cases where the message is not available in one contiguous block of

@@ -929,7 +929,7 @@ sb_sw_point_decompress(sb_fe_pair_t point[static const 1],
     r &= sb_fe_mod_sqrt(C_Y1(c), C_T5(c), C_T6(c), C_T7(c), C_T8(c), s->p);
 
     // If the "sign" bit does not match, invert the candidate square root
-    const sb_word_t sign_mismatch = sb_fe_test_bit(C_Y1(c), 1) ^ sign;
+    const sb_word_t sign_mismatch = sb_fe_test_bit(C_Y1(c), 1) ^sign;
     sb_fe_mod_negate(C_T5(c), C_Y1(c), s->p);
     sb_fe_ctswap(sign_mismatch, C_Y1(c), C_T5(c));
 
@@ -1097,7 +1097,8 @@ static _Bool sb_sw_verify_continue(sb_sw_context_t v[static const 1])
 
             // Try directly first:
             sb_fe_mont_square(C_T6(v), MULT_Z(v), s->p); // t6 = Z^2 * R
-            sb_fe_mont_mult(C_T7(v), VERIFY_QR(v), C_T6(v), s->p); // t7 = r * Z^2
+            sb_fe_mont_mult(C_T7(v), VERIFY_QR(v), C_T6(v),
+                            s->p); // t7 = r * Z^2
             ver |= sb_fe_equal(C_T7(v), C_X1(v));
 
             // If that didn't work, and qr < P - N, then we need to compare
@@ -1110,8 +1111,10 @@ static _Bool sb_sw_verify_continue(sb_sw_context_t v[static const 1])
             // See the small_r_signature tests, which generate signatures
             // where this path is tested.
 
-            sb_fe_mod_add(C_T5(v), VERIFY_QR(v), &s->n->p, s->p); // t5 = (N + r)
-            sb_fe_mont_mult(C_T7(v), C_T5(v), C_T6(v), s->p); // t7 = (N + r) * Z^2
+            sb_fe_mod_add(C_T5(v), VERIFY_QR(v), &s->n->p,
+                          s->p); // t5 = (N + r)
+            sb_fe_mont_mult(C_T7(v), C_T5(v), C_T6(v),
+                            s->p); // t7 = (N + r) * Z^2
             sb_fe_sub(C_T5(v), &s->p->p, &s->n->p); // t5 = P - N
             ver |= (sb_fe_lt(VERIFY_QR(v), C_T5(v)) & // r < P - N
                     sb_fe_equal(C_T7(v), C_X1(v))); // t7 == x
@@ -2174,6 +2177,29 @@ sb_error_t sb_sw_sign_message_digest_start
     return sb_sw_sign_message_digest_shared_start(ctx, private, message, s, e);
 }
 
+// Implemented in sb_sha256.c for sha256 message verification.
+extern void
+sb_sha256_finish_to_buffer(sb_sha256_state_t sha[static restrict 1]);
+
+sb_error_t sb_sw_sign_message_sha256_start
+    (sb_sw_context_t ctx[static const 1],
+     sb_sha256_state_t sha[static const 1],
+     const sb_sw_private_t private[static const 1],
+     sb_hmac_drbg_state_t* const provided_drbg,
+     const sb_sw_curve_id_t curve,
+     const sb_data_endian_t e)
+{
+    sb_sha256_finish_to_buffer(sha);
+
+    // This egregious cast works because sb_sw_message_digest_t is just a struct
+    // wrapper for a bunch of bytes.
+    const sb_sw_message_digest_t* const digest =
+        (const sb_sw_message_digest_t*) (sha->buffer);
+
+    return sb_sw_sign_message_digest_start(ctx, private, digest,
+                                           provided_drbg, curve, e);
+}
+
 sb_error_t sb_sw_sign_message_digest_continue
     (sb_sw_context_t ctx[static const 1],
      _Bool done[static const 1])
@@ -2244,6 +2270,24 @@ sb_error_t sb_sw_sign_message_digest
     SB_RETURN(err, ctx);
 }
 
+sb_error_t sb_sw_sign_message_sha256
+    (sb_sw_context_t ctx[static const 1],
+     sb_sw_message_digest_t digest[static const 1],
+     sb_sw_signature_t signature[static const 1],
+     const sb_sw_private_t private[static const 1],
+     const sb_byte_t* const input,
+     size_t const input_len,
+     sb_hmac_drbg_state_t* const provided_drbg,
+     const sb_sw_curve_id_t curve,
+     const sb_data_endian_t e)
+{
+    // Compute the message digest and provide it as output.
+    sb_sha256_message(&ctx->param_gen.sha, digest->bytes, input, input_len);
+
+    return sb_sw_sign_message_digest(ctx, signature, private, digest,
+                                     provided_drbg, curve, e);
+}
+
 sb_error_t sb_sw_verify_signature_start
     (sb_sw_context_t ctx[static const 1],
      const sb_sw_signature_t signature[static const 1],
@@ -2290,6 +2334,26 @@ sb_error_t sb_sw_verify_signature_start
     sb_sw_verify_start(ctx, s);
 
     return err;
+}
+
+sb_error_t sb_sw_verify_signature_sha256_start
+    (sb_sw_context_t ctx[static const 1],
+     sb_sha256_state_t sha[static const 1],
+     const sb_sw_signature_t signature[static const 1],
+     const sb_sw_public_t public[static const 1],
+     sb_hmac_drbg_state_t* const drbg,
+     const sb_sw_curve_id_t curve,
+     const sb_data_endian_t e)
+{
+    sb_sha256_finish_to_buffer(sha);
+
+    // This egregious cast works because sb_sw_message_digest_t is just a struct
+    // wrapper for a bunch of bytes.
+    const sb_sw_message_digest_t* const digest =
+        (const sb_sw_message_digest_t*) (sha->buffer);
+
+    return sb_sw_verify_signature_start(ctx, signature, public, digest, drbg,
+                                        curve, e);
 }
 
 sb_error_t sb_sw_verify_signature_continue(sb_sw_context_t ctx[static const 1],
@@ -2352,6 +2416,23 @@ sb_error_t sb_sw_verify_signature(sb_sw_context_t ctx[static const 1],
     SB_RETURN(err, ctx);
 }
 
+sb_error_t sb_sw_verify_signature_sha256
+    (sb_sw_context_t ctx[static const 1],
+     sb_sw_message_digest_t digest[static const 1],
+     const sb_sw_signature_t signature[static const 1],
+     const sb_sw_public_t public[static const 1],
+     const sb_byte_t* const input,
+     size_t const input_len,
+     sb_hmac_drbg_state_t* const drbg,
+     const sb_sw_curve_id_t curve,
+     const sb_data_endian_t e)
+{
+    // Compute the message digest and provide it as output.
+    sb_sha256_message(&ctx->param_gen.sha, digest->bytes, input, input_len);
+
+    return sb_sw_verify_signature(ctx, signature, public, digest, drbg,
+                                  curve, e);
+}
 
 #ifdef SB_TEST
 #define SB_SW_LIB_TESTS_IMPL

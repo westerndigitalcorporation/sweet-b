@@ -144,6 +144,18 @@ void sb_hmac_sha256_finish_to_key(sb_hmac_sha256_state_t hmac[static const 1])
     sb_hmac_sha256_reinit(hmac);
 }
 
+void sb_hmac_sha256(sb_hmac_sha256_state_t hmac[static const restrict 1],
+                    sb_byte_t output[static const restrict SB_SHA256_SIZE],
+                    const sb_byte_t* const restrict key,
+                    size_t const keylen,
+                    const sb_byte_t* const restrict input,
+                    size_t const input_len)
+{
+    sb_hmac_sha256_init(hmac, key, keylen);
+    sb_hmac_sha256_update(hmac, input, input_len);
+    sb_hmac_sha256_finish(hmac, output);
+}
+
 #ifdef SB_TEST
 
 // RFC 4231 test vectors
@@ -309,9 +321,8 @@ _Bool sb_test_hmac_sha256(void)
     sb_byte_t h[SB_SHA256_SIZE];
 
 #define SB_RUN_TEST(n) do { \
-    sb_hmac_sha256_init(&hmac, TEST_K ## n, sizeof(TEST_K ## n)); \
-    sb_hmac_sha256_update(&hmac, TEST_M ## n, sizeof(TEST_M ## n)); \
-    sb_hmac_sha256_finish(&hmac, h); \
+    sb_hmac_sha256(&hmac, h, TEST_K ## n, sizeof(TEST_K ## n), \
+                   TEST_M ## n, sizeof(TEST_M ## n)); \
     SB_TEST_ASSERT_EQUAL(h, TEST_H ## n); \
 } while (0)
 

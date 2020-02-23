@@ -106,4 +106,20 @@ extern void sb_sha256_update(sb_sha256_state_t sha[static restrict 1],
 extern void sb_sha256_finish(sb_sha256_state_t sha[static restrict 1],
                              sb_byte_t output[static restrict SB_SHA256_SIZE]);
 
+/**
+ * Compute the SHA256 hash of a complete input message as bytes. Requires a
+ * state object allocated by the caller.
+ *
+ * @param [out] sha SHA256 state. Must be allocated by the caller.
+ * @param [in] input Input bytes of length \p len. Must not alias the SHA256
+ * state. May be NULL if \p len is zero.
+ * @param [in] len Length of \p input bytes.
+ * @param [out] output Resulting SHA256 hash, in the form of \ref
+ * SB_SHA256_SIZE bytes.
+ */
+extern void sb_sha256_message(sb_sha256_state_t sha[static restrict 1],
+                              sb_byte_t output[static restrict SB_SHA256_SIZE],
+                              const sb_byte_t* restrict input,
+                              size_t len);
+
 #endif

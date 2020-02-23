@@ -106,4 +106,23 @@ extern void
 sb_hmac_sha256_finish(sb_hmac_sha256_state_t hmac[static restrict 1],
                       sb_byte_t output[static restrict SB_SHA256_SIZE]);
 
+/**
+ * Compute the HMAC-SHA256 of the supplied input using the supplied key.
+ *
+ * @param [out] hmac HMAC-SHA256 state. Must be allocated by the caller.
+ * @param [out] output Resulting HMAC-SHA256 value, in the form of \ref
+ * SB_SHA256_SIZE bytes.
+ * @param [in]  key HMAC-SHA256 key. Must not alias \p hmac.
+ * @param [in]  keylen HMAC-SHA256 key length, in bytes.
+ * @param [in] input Input bytes of length \p len. Must not alias the HMAC
+ * state. May be NULL if \p len is zero.
+ * @param [in] input_len Length of \p input bytes.
+ */
+extern void sb_hmac_sha256(sb_hmac_sha256_state_t hmac[static restrict 1],
+                           sb_byte_t output[static restrict SB_SHA256_SIZE],
+                           const sb_byte_t* restrict key,
+                           size_t keylen,
+                           const sb_byte_t* restrict input,
+                           size_t input_len);
+
 #endif

@@ -827,6 +827,71 @@ _Bool sb_test_sign_rfc6979(void)
     return 1;
 }
 
+// Test RFC6979 deterministic whole-message signing, as well as verification
+// of the resulting signature.
+_Bool sb_test_sign_rfc6979_sha256(void)
+{
+    sb_sw_context_t ct;
+    sb_sw_signature_t out;
+    static const sb_byte_t orig_message[] = "sample";
+    sb_sw_message_digest_t dig;
+    SB_TEST_ASSERT_SUCCESS(
+        sb_sw_sign_message_sha256(&ct, &dig, &out, &TEST_PRIV_2,
+                                  orig_message, sizeof(orig_message) - 1,
+                                  NULL, SB_SW_CURVE_P256,
+                                  SB_DATA_ENDIAN_BIG));
+    SB_TEST_ASSERT_EQUAL(TEST_MESSAGE, dig);
+    SB_TEST_ASSERT_EQUAL(TEST_SIG, out);
+
+    SB_NULLIFY(&dig);
+
+    SB_TEST_ASSERT_SUCCESS(
+        sb_sw_verify_signature_sha256(&ct, &dig, &out, &TEST_PUB_2,
+                                      orig_message, sizeof(orig_message) - 1,
+                                      NULL, SB_SW_CURVE_P256,
+                                      SB_DATA_ENDIAN_BIG)
+    );
+    SB_TEST_ASSERT_EQUAL(TEST_MESSAGE, dig);
+
+    // Test the incremental counterparts
+    sb_sha256_state_t sha;
+    sb_sha256_init(&sha);
+    sb_sha256_update(&sha, orig_message, sizeof(orig_message) - 1);
+
+    SB_TEST_ASSERT_SUCCESS(
+        sb_sw_sign_message_sha256_start(&ct, &sha, &TEST_PRIV_2, NULL,
+                                        SB_SW_CURVE_P256, SB_DATA_ENDIAN_BIG));
+    _Bool finished = 0;
+    do {
+        SB_TEST_ASSERT_SUCCESS(sb_sw_sign_message_digest_continue(&ct,
+                                                                  &finished));
+    } while (!finished);
+
+    SB_TEST_ASSERT_SUCCESS(
+        sb_sw_sign_message_digest_finish(&ct, &out, SB_DATA_ENDIAN_BIG));
+
+    SB_TEST_ASSERT_EQUAL(TEST_MESSAGE, dig);
+    SB_TEST_ASSERT_EQUAL(TEST_SIG, out);
+
+    sb_sha256_init(&sha);
+    sb_sha256_update(&sha, orig_message, sizeof(orig_message) - 1);
+    SB_TEST_ASSERT_SUCCESS(
+        sb_sw_verify_signature_sha256_start(&ct, &sha, &TEST_SIG,
+                                            &TEST_PUB_2, NULL, SB_SW_CURVE_P256,
+                                            SB_DATA_ENDIAN_BIG)
+    );
+
+    finished = 0;
+
+    do {
+        SB_TEST_ASSERT_SUCCESS(sb_sw_verify_signature_continue(&ct, &finished));
+    } while (!finished);
+
+    SB_TEST_ASSERT_SUCCESS(sb_sw_verify_signature_finish(&ct));
+
+    return 1;
+}
+
 // Unit test for secp256k1 signing.
 _Bool sb_test_sign_secp256k1(void)
 {

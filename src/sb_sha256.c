@@ -41,6 +41,7 @@
 
 #include "sb_test.h"
 #include "sb_sha256.h"
+#include "sb_error.h" // for SB_NULLIFY
 #include <string.h>
 
 #define SB_SHA256_ROUNDS 64
@@ -226,8 +227,9 @@ void sb_sha256_update(sb_sha256_state_t sha[static const restrict 1],
 
 static const sb_byte_t sb_sha256_final_bit = 0x80;
 
-void sb_sha256_finish(sb_sha256_state_t sha[static const restrict 1],
-                      sb_byte_t output[static const restrict SB_SHA256_SIZE])
+// This puts the final hash in ihash, but does not set output.
+static void sb_sha256_finish_internal
+    (sb_sha256_state_t sha[static const restrict 1])
 {
     // Annoyingly, the final SHA2 length needs to be in bits, not bytes.
     const uint64_t total_bits = ((uint64_t) sha->total_bytes) << UINT64_C(3);
@@ -249,10 +251,44 @@ void sb_sha256_finish(sb_sha256_state_t sha[static const restrict 1],
     sb_sha2_uint64_set(&sha->buffer[SB_SHA256_BLOCK_SIZE - 8], total_bits);
 
     sb_sha256_process_block(sha, sha->buffer);
+}
+
+// Prototype!
+void sb_sha256_finish_to_buffer(sb_sha256_state_t sha[static restrict 1]);
+
+// This routine is exposed for sb_sw_lib.c, which uses it for message signing
+// and verification.
+void sb_sha256_finish_to_buffer(sb_sha256_state_t sha[static const restrict 1])
+{
+    sb_sha256_finish_internal(sha);
 
     for (size_t i = 0; i < 8; i++) {
-        sb_sha256_word_set(&output[i << SB_SHA256_WORD_SHIFT], sha->ihash.v[i]);
+        sb_sha256_word_set(&sha->buffer[i << SB_SHA256_WORD_SHIFT],
+                           sha->ihash.v[i]);
     }
+}
+
+void sb_sha256_finish(sb_sha256_state_t sha[static const restrict 1],
+                      sb_byte_t output[static const restrict SB_SHA256_SIZE])
+{
+    sb_sha256_finish_internal(sha);
+
+    for (size_t i = 0; i < 8; i++) {
+        sb_sha256_word_set(&output[i << SB_SHA256_WORD_SHIFT],
+                           sha->ihash.v[i]);
+    }
+
+    SB_NULLIFY(sha);
+}
+
+void sb_sha256_message(sb_sha256_state_t sha[static const restrict 1],
+                       sb_byte_t output[static const restrict SB_SHA256_SIZE],
+                       const sb_byte_t* const restrict input,
+                       size_t const len)
+{
+    sb_sha256_init(sha);
+    sb_sha256_update(sha, input, len);
+    sb_sha256_finish(sha, output);
 }
 
 #ifdef SB_TEST
@@ -304,9 +340,8 @@ _Bool sb_test_sha256_fips_180_2_2(void)
     sb_sha256_state_t ctx;
     sb_byte_t hash[SB_SHA256_SIZE];
 
-    sb_sha256_init(&ctx);
-    sb_sha256_update(&ctx, sb_sha256_test_m2, sizeof(sb_sha256_test_m2) - 1);
-    sb_sha256_finish(&ctx, hash);
+    sb_sha256_message(&ctx, hash,
+                      sb_sha256_test_m2, sizeof(sb_sha256_test_m2) - 1);
     SB_TEST_ASSERT_EQUAL(hash, sb_sha256_test_h2);
     return 1;
 }

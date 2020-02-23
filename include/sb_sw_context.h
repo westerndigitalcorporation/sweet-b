@@ -80,6 +80,7 @@ typedef struct sb_sw_context_param_gen_t {
     union {
         sb_hmac_drbg_state_t drbg;
         sb_hkdf_state_t hkdf;
+        sb_sha256_state_t sha; // Used for complete-message signing
         sb_fe_t z2; // Candidate Z value during Z generation
     };
     sb_byte_t buf[SB_SW_CONTEXT_PARAM_BUF_ELEMS * SB_ELEM_BYTES];
