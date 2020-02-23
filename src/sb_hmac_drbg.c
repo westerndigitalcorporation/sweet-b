@@ -41,6 +41,7 @@
 
 #include "sb_test.h"
 #include "sb_hmac_drbg.h"
+#include "sb_error.h" // for SB_NULLIFY
 #include <string.h>
 
 // entropy_input || nonce || personalization
@@ -209,10 +210,10 @@ static sb_error_t sb_hmac_drbg_generate_additional_vec_opt
 
     if ((additional_required
 #ifdef SB_TEST
-        || drbg->additional_input_required
+         || drbg->additional_input_required
 #endif
         )
-    && (total_additional_len == 0)) {
+        && (total_additional_len == 0)) {
         err |= SB_ERROR_ADDITIONAL_INPUT_REQUIRED;
     }
 
@@ -346,6 +347,173 @@ _Bool sb_test_hmac_drbg(void)
     SB_TEST_ASSERT_SUCCESS(
         sb_hmac_drbg_generate(&drbg, r, sizeof(TEST_R1)));
     SB_TEST_ASSERT_EQUAL(r, TEST_R1, sizeof(TEST_R1));
+    return 1;
+}
+
+_Bool sb_test_hmac_drbg_errors(void)
+{
+    sb_hmac_drbg_state_t drbg;
+    SB_NULLIFY(&drbg);
+    sb_byte_t r[128];
+
+    // Test an uninitialized DRBG
+
+    SB_TEST_ASSERT_ERROR(sb_hmac_drbg_reseed(&drbg, TEST_E1, sizeof(TEST_E1),
+                                             NULL, 0),
+                         SB_ERROR_DRBG_UNINITIALIZED);
+    SB_TEST_ASSERT_ERROR(sb_hmac_drbg_reseed_required(&drbg, 1),
+                         SB_ERROR_DRBG_UNINITIALIZED);
+    SB_TEST_ASSERT_ERROR(sb_hmac_drbg_generate(&drbg, r, sizeof(r)),
+                         SB_ERROR_DRBG_UNINITIALIZED);
+    SB_TEST_ASSERT_ERROR(
+        sb_hmac_drbg_generate_additional_dummy(&drbg, r, sizeof(r)),
+        SB_ERROR_DRBG_UNINITIALIZED);
+
+    const sb_byte_t* additional[SB_HMAC_DRBG_ADD_VECTOR_LEN] =
+        { TEST_E1 };
+    const size_t additional_len[SB_HMAC_DRBG_ADD_VECTOR_LEN] =
+        { sizeof(TEST_E1) };
+
+    SB_TEST_ASSERT_ERROR(
+        sb_hmac_drbg_generate_additional_vec(&drbg, r, sizeof(r), additional,
+                                             additional_len),
+        SB_ERROR_DRBG_UNINITIALIZED);
+
+    // Initialize the DRBG with no entropy
+    SB_TEST_ASSERT_ERROR(
+        sb_hmac_drbg_init(&drbg, NULL, 0, NULL, 0, NULL, 0),
+        SB_ERROR_INSUFFICIENT_ENTROPY);
+
+    // Initialize the DRBG with no nonce
+    SB_TEST_ASSERT_ERROR(
+        sb_hmac_drbg_init(&drbg, TEST_E1, sizeof(TEST_E1), NULL, 0, NULL, 0),
+        SB_ERROR_INSUFFICIENT_ENTROPY);
+
+    // Initialize the DRBG with a nonce, but no entropy
+    SB_TEST_ASSERT_ERROR(
+        sb_hmac_drbg_init(&drbg, NULL, 0, TEST_N1, sizeof(TEST_N1), NULL, 0),
+        SB_ERROR_INSUFFICIENT_ENTROPY);
+
+    const sb_byte_t chonk[SB_HMAC_DRBG_MAX_ENTROPY_INPUT_LENGTH + 1] = { 0 };
+
+    // Initialize the DRBG with WAY too much entropy
+    SB_TEST_ASSERT_ERROR(
+        sb_hmac_drbg_init(&drbg, chonk, sizeof(chonk), TEST_N1,
+                          sizeof(TEST_N1), NULL, 0), SB_ERROR_INPUT_TOO_LARGE);
+
+    // Initialize the DRBG with WAY too much nonce
+    SB_TEST_ASSERT_ERROR(
+        sb_hmac_drbg_init(&drbg, TEST_E1, sizeof(TEST_E1),
+                          chonk, sizeof(chonk), NULL, 0),
+        SB_ERROR_INPUT_TOO_LARGE);
+
+    const sb_byte_t
+        hefty_chonk[SB_HMAC_DRBG_MAX_PERSONALIZATION_STRING_LENGTH + 1] = { 0 };
+
+    // Initialize the DRBG with WAY too much personalization string
+    SB_TEST_ASSERT_ERROR(
+        sb_hmac_drbg_init(&drbg, TEST_E1, sizeof(TEST_E1),
+                          TEST_N1, sizeof(TEST_N1), hefty_chonk,
+                          sizeof(hefty_chonk)),
+        SB_ERROR_INPUT_TOO_LARGE);
+
+    // oh lawd he comin'
+    SB_TEST_ASSERT_ERROR(
+        sb_hmac_drbg_init(&drbg, chonk, sizeof(chonk),
+                          chonk, sizeof(chonk), hefty_chonk,
+                          sizeof(hefty_chonk)),
+        SB_ERROR_INPUT_TOO_LARGE);
+
+    // A fine boi? Nope.
+    SB_TEST_ASSERT_ERROR(
+        sb_hmac_drbg_init(&drbg, NULL, 0,
+                          chonk, sizeof(chonk), hefty_chonk,
+                          sizeof(hefty_chonk)),
+        SB_ERROR_INSUFFICIENT_ENTROPY, SB_ERROR_INPUT_TOO_LARGE);
+
+    // Initialize the DRBG correctly
+    SB_TEST_ASSERT_SUCCESS(
+        sb_hmac_drbg_init(&drbg, TEST_E1, sizeof(TEST_E1), TEST_N1,
+                          sizeof(TEST_N1), NULL, 0));
+
+    // Spin until we have to reseed...
+    sb_error_t err;
+    do {
+        SB_TEST_ASSERT_SUCCESS(sb_hmac_drbg_generate_additional_dummy(&drbg,
+                                                                      r,
+                                                                      sizeof(r)));
+        err = sb_hmac_drbg_reseed_required(&drbg, 1);
+        SB_TEST_ASSERT(err == SB_SUCCESS || err == SB_ERROR_RESEED_REQUIRED);
+    } while (err == SB_SUCCESS);
+
+    SB_TEST_ASSERT_ERROR(sb_hmac_drbg_generate_additional_dummy(&drbg,
+                                                                r, sizeof(r)),
+                         SB_ERROR_RESEED_REQUIRED);
+
+    // Try to reseed with no entropy.
+    SB_TEST_ASSERT_ERROR(sb_hmac_drbg_reseed(&drbg, NULL, 0, NULL, 0),
+                         SB_ERROR_INSUFFICIENT_ENTROPY);
+
+    // Try to reseed with too much entropy.
+    SB_TEST_ASSERT_ERROR(
+        sb_hmac_drbg_reseed(&drbg, chonk, sizeof(chonk), NULL, 0),
+        SB_ERROR_INPUT_TOO_LARGE);
+
+    // Try to reseed with too much additional input.
+    const sb_byte_t
+        mega_chonker[SB_HMAC_DRBG_MAX_ADDITIONAL_INPUT_LENGTH + 1] = { 0 };
+
+    SB_TEST_ASSERT_ERROR(
+        sb_hmac_drbg_reseed(&drbg, TEST_E1, sizeof(TEST_E1), mega_chonker,
+                            sizeof(mega_chonker)),
+        SB_ERROR_INPUT_TOO_LARGE);
+
+    // Reseed successfully.
+    SB_TEST_ASSERT_SUCCESS(sb_hmac_drbg_reseed(&drbg, TEST_E1,
+                                               sizeof(TEST_E1), NULL, 0));
+
+    // Try to generate too much data.
+    uint8_t fhqwhgads[SB_HMAC_DRBG_MAX_BYTES_PER_REQUEST + 1];
+    SB_TEST_ASSERT_ERROR(
+        sb_hmac_drbg_generate_additional_dummy(&drbg, fhqwhgads,
+                                               sizeof(fhqwhgads)),
+        SB_ERROR_REQUEST_TOO_LARGE);
+
+    // Try to input too much additional input, spread over multiple vectors.
+    static const uint8_t chonk_chunk_1[1] = { 0 };
+    static const uint8_t
+        chonk_chunk_2[SB_HMAC_DRBG_MAX_ADDITIONAL_INPUT_LENGTH] = { 0 };
+
+    const sb_byte_t* chonky_additional[SB_HMAC_DRBG_ADD_VECTOR_LEN] =
+        { chonk_chunk_1, chonk_chunk_2 };
+    const size_t chonky_additional_len[SB_HMAC_DRBG_ADD_VECTOR_LEN] =
+        { sizeof(chonk_chunk_1), sizeof(chonk_chunk_2) };
+
+    SB_TEST_ASSERT_ERROR(
+        sb_hmac_drbg_generate_additional_vec(&drbg, r, sizeof(r),
+                                             chonky_additional,
+                                             chonky_additional_len),
+        SB_ERROR_INPUT_TOO_LARGE);
+
+    // everybody to the limit
+    SB_TEST_ASSERT_ERROR(
+        sb_hmac_drbg_generate_additional_vec(&drbg, fhqwhgads,
+                                             sizeof(fhqwhgads),
+                                             chonky_additional,
+                                             chonky_additional_len),
+        SB_ERROR_REQUEST_TOO_LARGE, SB_ERROR_INPUT_TOO_LARGE);
+
+    // Verify that additional input enforcement works for unit tests of the
+    // curve operations.
+    drbg.additional_input_required = 1;
+    SB_TEST_ASSERT_ERROR(
+        sb_hmac_drbg_generate(&drbg, r, sizeof(r)),
+        SB_ERROR_ADDITIONAL_INPUT_REQUIRED);
+
+    // ... but that it works when the "dummy" routine is called.
+    SB_TEST_ASSERT_SUCCESS(
+        sb_hmac_drbg_generate_additional_dummy(&drbg, r, sizeof(r)));
+
     return 1;
 }
 

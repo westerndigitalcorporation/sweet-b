@@ -48,6 +48,7 @@ SB_DEFINE_TEST(sha256_fips_180_2_2);
 SB_DEFINE_TEST(sha256_fips_180_2_3);
 SB_DEFINE_TEST(hmac_sha256);
 SB_DEFINE_TEST(hmac_drbg);
+SB_DEFINE_TEST(hmac_drbg_errors);
 SB_DEFINE_TEST(hkdf);
 
 // These tests are for general field operations
