@@ -62,11 +62,11 @@ static void
 sb_sw_point_mult(sb_sw_context_t m[static const 1],
                  const sb_sw_curve_t curve[static const 1])
 {
-    *MULT_STATE(m) = (sb_sw_context_saved_state_t) { .curve = curve };
-    sb_sw_point_mult_start(m);
+    SB_NULLIFY(MULT_STATE(m));
+    sb_sw_point_mult_start(m, curve);
     do {
-    } while (!sb_sw_point_mult_continue(m));
-    sb_sw_point_mult_continue(m);
+    } while (!sb_sw_point_mult_continue(m, curve));
+    sb_sw_point_mult_continue(m, curve);
 }
 
 /// Unit tests for internal routines:
@@ -384,11 +384,9 @@ static void sb_sw_point_mult_add_z(sb_sw_context_t q[static const 1],
 {
     *MULT_STATE(q) = (sb_sw_context_saved_state_t) {
         .operation = SB_SW_INCREMENTAL_OPERATION_VERIFY_SIGNATURE,
-        .stage = SB_SW_VERIFY_OP_STAGE_INV_Z,
-        .curve = s
+        .stage = SB_SW_VERIFY_OP_STAGE_INV_Z
     };
-    while (!sb_sw_point_mult_add_z_continue(q)) {
-    }
+    while (!sb_sw_point_mult_add_z_continue(q, s));
 }
 
 // Test that A * (B * G) + C * G = (A * B + C) * G

@@ -159,7 +159,7 @@ sb_word_t
 sb_fe_test_bit(const sb_fe_t a[static const 1], const sb_bitcount_t bit)
 {
     sb_uword_t r = 0;
-    const size_t word_bit = bit & SB_WORD_BITS_MASK;
+    const sb_bitcount_t word_bit = bit & SB_WORD_BITS_MASK;
 
     // Note that the result is accumulated into the low bit of r, but the
     // other bits may be junk until the end, when they are masked off.
@@ -554,7 +554,7 @@ sb_fe_mod_expt_r(sb_fe_t x[static const restrict 1],
 {
     _Bool by = 0;
     *t2 = p->r_mod_p;
-    for (size_t i = p->bits - 1; i >= e_shift && i <= SB_FE_BITS; i--) {
+    for (sb_bitcount_t i = p->bits - 1; i >= e_shift && i <= SB_FE_BITS; i--) {
         const sb_word_t b = sb_fe_test_bit(e, i);
         if (!by) {
             if (b) {

@@ -45,6 +45,7 @@
 #include <sb_types.h>
 #include <sb_hmac_drbg.h>
 #include <sb_hkdf.h>
+#include <stdalign.h>
 
 #ifdef SB_TEST
 #define SB_CONTEXT_SIZE_ASSERT(context, size) \
@@ -198,11 +199,16 @@ typedef enum sb_sw_verify_op_stage_t {
 
 typedef uint32_t sb_sw_op_stage_t;
 
+// Wrapper for sb_sw_curve_id_value_t values for ABI stability. This
+// duplicates a typedef in sb_sw_lib.h, which includes this file; the
+// definition is included in sb_sw_lib.h for documentation purposes.
+typedef uint32_t sb_sw_curve_id_t;
+
 typedef struct sb_sw_context_saved_state_t {
     sb_sw_incremental_operation_t operation;
-    const struct sb_sw_curve_t* curve;
+    sb_sw_curve_id_t curve_id;
     sb_sw_op_stage_t stage;
-    size_t i;
+    sb_size_t i;
     union {
         struct {
             sb_word_t inv_k, k_one, swap;
@@ -213,8 +219,13 @@ typedef struct sb_sw_context_saved_state_t {
     };
 } sb_sw_context_saved_state_t;
 
-// There is no size assertion for sb_sw_context_saved_state_t as it contains
-// native pointers, which may be of different widths on different platforms.
+// sb_word_t varies in size depending on SB_WORD_SIZE. The maximum size of
+// this structure is 16 + 3 * 8 = 40 bytes. However, when SB_WORD_SIZE is
+// less than 4, the structure will be padded; thus, the size assertion is
+// disabled in that case.
+#if SB_WORD_SIZE >= 4
+SB_CONTEXT_SIZE_ASSERT(sb_sw_context_saved_state_t, 16 + 3 * sizeof(sb_word_t));
+#endif
 
 /** @struct sb_sw_context_param_use_t
  *  @brief Private context structure used during all curve operations.
@@ -265,5 +276,18 @@ typedef struct sb_sw_context_t {
 } sb_sw_context_t;
 
 SB_CONTEXT_SIZE_ASSERT(sb_sw_context_t, 512);
+
+#ifndef SB_TEST
+// sb_size_t is a uint32_t, whereas sb_word_t can be anything between uint8_t
+// and uint64_t. The purpose of this is to ensure that in FFI bindings,
+// sb_sw_context_t can be allocated as an appropriately aligned blob of bytes
+// instead of exposing its representation, which is opaque in any case.
+_Static_assert(alignof(sb_sw_context_t) ==
+                   (alignof(sb_word_t) < alignof(sb_size_t) ?
+                    alignof(sb_size_t) :
+                    alignof(sb_word_t)),
+               "sb_sw_context_t should be aligned to the minimum of sb_word_t "
+               "or sb_size_t");
+#endif
 
 #endif

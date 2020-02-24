@@ -75,8 +75,8 @@
   * @{
   */
 
-typedef size_t sb_wordcount_t;
-typedef size_t sb_bitcount_t;
+typedef sb_size_t sb_wordcount_t;
+typedef sb_size_t sb_bitcount_t;
 
 /** @brief The number of bits in a field element. Currently fixed at 256. */
 #define SB_FE_BITS  256

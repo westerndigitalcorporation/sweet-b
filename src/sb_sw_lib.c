@@ -97,6 +97,33 @@
 #define VERIFY_QS(ct) (&(ct)->param_use.verify.early.qs)
 #define VERIFY_QR(ct) (&(ct)->param_use.verify.common.qr)
 
+// Helper to fetch a curve given its curve_id
+static sb_error_t sb_sw_curve_from_id(const sb_sw_curve_t** const s,
+                                      sb_sw_curve_id_t const curve)
+{
+    switch (curve) {
+#if SB_SW_P256_SUPPORT
+        case SB_SW_CURVE_P256: {
+            *s = &SB_CURVE_P256;
+            return 0;
+        }
+#endif
+#if SB_SW_SECP256K1_SUPPORT
+        case SB_SW_CURVE_SECP256K1: {
+            *s = &SB_CURVE_SECP256K1;
+            return 0;
+        }
+#endif
+#ifdef SB_TEST
+        case SB_SW_CURVE_INVALID:
+            break;
+#endif
+    }
+    // Huh?
+    *s = NULL;
+    return SB_ERROR_CURVE_INVALID;
+}
+
 // All multiplication in Sweet B takes place using Montgomery multiplication
 // MM(x, y) = x * y * R^-1 mod M where R = 2^SB_FE_BITS
 // This has the nice property that MM(x * R, y * R) = x * y * R
@@ -241,7 +268,8 @@ static void sb_sw_regularize_scalar(sb_fe_t scalar[static const 1],
 }
 
 static void
-sb_sw_point_mult_start(sb_sw_context_t m[static const 1])
+sb_sw_point_mult_start(sb_sw_context_t m[static const 1],
+                       const sb_sw_curve_t curve[static const 1])
 {
     // Input scalars MUST always be checked for validity
     // (k is reduced and nonzero mod N).
@@ -258,7 +286,7 @@ sb_sw_point_mult_start(sb_sw_context_t m[static const 1])
     // for constant-time swaps.
     state.inv_k = sb_fe_test_bit(MULT_K(m), SB_FE_BITS - 1);
 
-    sb_fe_mod_negate(C_T5(m), MULT_K(m), state.curve->n);
+    sb_fe_mod_negate(C_T5(m), MULT_K(m), curve->n);
     sb_fe_ctswap(state.inv_k, C_T5(m), MULT_K(m));
 
     // The scalar 1 will be handled by allowing the ladder to produce the
@@ -269,7 +297,7 @@ sb_sw_point_mult_start(sb_sw_context_t m[static const 1])
     // be inverted to produce -P.
     state.k_one = sb_fe_equal(MULT_K(m), &SB_FE_ONE);
 
-    sb_sw_regularize_scalar(MULT_K(m), m, state.curve);
+    sb_sw_regularize_scalar(MULT_K(m), m, curve);
 
     // Throughout the ladder, (x1, y1) is (X0 * R, Y0 * R)
     // (x2, y2) is (X1 * R, Y1 * R)
@@ -283,21 +311,21 @@ sb_sw_point_mult_start(sb_sw_context_t m[static const 1])
     *C_X2(m) = *MULT_POINT_X(m);
     *C_Y2(m) = *MULT_POINT_Y(m);
 
-    sb_sw_point_initial_double(m, state.curve);
+    sb_sw_point_initial_double(m, curve);
 
     // The following applies a Z update of iz * R^-1.
 
-    sb_fe_mont_square(C_T7(m), MULT_Z(m), state.curve->p); // t7 = z^2
-    sb_fe_mont_mult(C_T6(m), MULT_Z(m), C_T7(m), state.curve->p); // t6 = z^3
+    sb_fe_mont_square(C_T7(m), MULT_Z(m), curve->p); // t7 = z^2
+    sb_fe_mont_mult(C_T6(m), MULT_Z(m), C_T7(m), curve->p); // t6 = z^3
 
     *C_T5(m) = *C_X1(m);
-    sb_fe_mont_mult(C_X1(m), C_T5(m), C_T7(m), state.curve->p); // x z^2
+    sb_fe_mont_mult(C_X1(m), C_T5(m), C_T7(m), curve->p); // x z^2
     *C_T5(m) = *C_Y1(m);
-    sb_fe_mont_mult(C_Y1(m), C_T5(m), C_T6(m), state.curve->p); // y z^3
+    sb_fe_mont_mult(C_Y1(m), C_T5(m), C_T6(m), curve->p); // y z^3
     *C_T5(m) = *C_X2(m);
-    sb_fe_mont_mult(C_X2(m), C_T5(m), C_T7(m), state.curve->p); // x z^2
+    sb_fe_mont_mult(C_X2(m), C_T5(m), C_T7(m), curve->p); // x z^2
     *C_T5(m) = *C_Y2(m);
-    sb_fe_mont_mult(C_Y2(m), C_T5(m), C_T6(m), state.curve->p); // y z^3
+    sb_fe_mont_mult(C_Y2(m), C_T5(m), C_T6(m), curve->p); // y z^3
 
     state.i = SB_FE_BITS - 1;
     state.stage = SB_SW_POINT_MULT_OP_STAGE_LADDER;
@@ -308,7 +336,8 @@ sb_sw_point_mult_start(sb_sw_context_t m[static const 1])
 #define SB_SW_POINT_ITERATIONS 16
 
 static _Bool
-sb_sw_point_mult_continue(sb_sw_context_t m[static const 1])
+sb_sw_point_mult_continue(sb_sw_context_t m[static const 1],
+                          const sb_sw_curve_t curve[static const 1])
 {
     sb_sw_context_saved_state_t state = *MULT_STATE(m);
 
@@ -384,7 +413,8 @@ sb_sw_point_mult_continue(sb_sw_context_t m[static const 1])
 
     switch (state.stage) {
         case SB_SW_POINT_MULT_OP_STAGE_LADDER: {
-            for (size_t ops = 0; state.i > 0 && ops < SB_SW_POINT_ITERATIONS;
+            for (sb_bitcount_t ops = 0; state.i > 0 &&
+                                        ops < SB_SW_POINT_ITERATIONS;
                  ops++, state.i--) {
                 const sb_word_t b = sb_fe_test_bit(MULT_K(m), state.i);
 
@@ -414,7 +444,7 @@ sb_sw_point_mult_continue(sb_sw_context_t m[static const 1])
                 // (x2, y2) = k[256..(i+1)] * P
 
                 // R_b = R_b + R_{1-b}; R_{1-b} = R_{b} - R{1-b}
-                sb_sw_point_co_z_conj_add(m, state.curve); // 6MM + 7A
+                sb_sw_point_co_z_conj_add(m, curve); // 6MM + 7A
 
                 // (x1, y1) = (2 * k[256..(i+1)] + 1 ) * P
 
@@ -425,7 +455,7 @@ sb_sw_point_mult_continue(sb_sw_context_t m[static const 1])
                 // (x2, y2) = 1 * P
 
                 // R_b = R_b + R_{1-b}; R_{1-b} = R_b'
-                sb_sw_point_co_z_add_update(m, state.curve); // 8MM + 11A
+                sb_sw_point_co_z_add_update(m, curve); // 8MM + 11A
 
                 // if k[i] is 0:
                 // (x1, y1) is 2 * k[256..(i+1)] * P = k[256..i] * P
@@ -461,7 +491,7 @@ sb_sw_point_mult_continue(sb_sw_context_t m[static const 1])
             // (x1, y1) = R_b; (x2, y2) = R_{1-b}
 
             // here the logical meaning of the registers swaps!
-            sb_sw_point_co_z_conj_add(m, state.curve);
+            sb_sw_point_co_z_conj_add(m, curve);
             // (x1, y1) = R_{1-b}, (x2, y2) = R_b
 
             // if b is 1, swap the registers
@@ -470,31 +500,31 @@ sb_sw_point_mult_continue(sb_sw_context_t m[static const 1])
             // (x1, y1) = R1; (x2, y2) = R0
 
             // Compute final Z^-1
-            sb_fe_mod_sub(C_T8(m), C_X1(m), C_X2(m), state.curve->p); // X1 - X0
+            sb_fe_mod_sub(C_T8(m), C_X1(m), C_X2(m), curve->p); // X1 - X0
 
             // if b is 1, swap the registers back
             sb_fe_ctswap(b, C_X1(m), C_X2(m));
             sb_fe_ctswap(b, C_Y1(m), C_Y2(m));
             // (x1, y1) = R_{1-b}, (x2, y2) = R_b
 
-            sb_fe_mont_mult(C_T5(m), C_T8(m), C_Y2(m), state.curve->p);
+            sb_fe_mont_mult(C_T5(m), C_T8(m), C_Y2(m), curve->p);
             // t5 = Y_b * (X_1 - X_0)
 
-            sb_fe_mont_mult(C_T8(m), C_T5(m), MULT_POINT_X(m), state.curve->p);
+            sb_fe_mont_mult(C_T8(m), C_T5(m), MULT_POINT_X(m), curve->p);
             // t8 = t5 * x_P = x_P * Y_b * (X_1 - X_0)
 
-            sb_fe_mod_inv_r(C_T8(m), C_T5(m), C_T6(m), state.curve->p);
+            sb_fe_mod_inv_r(C_T8(m), C_T5(m), C_T6(m), curve->p);
             // t8 = 1 / (x_P * Y_b * (X_1 - X_0))
 
-            sb_fe_mont_mult(C_T5(m), C_T8(m), MULT_POINT_Y(m), state.curve->p);
+            sb_fe_mont_mult(C_T5(m), C_T8(m), MULT_POINT_Y(m), curve->p);
             // t5 = yP / (x_P * Y_b * (X_1 - X_0))
 
-            sb_fe_mont_mult(C_T8(m), C_T5(m), C_X2(m), state.curve->p);
+            sb_fe_mont_mult(C_T8(m), C_T5(m), C_X2(m), curve->p);
             // t8 = (X_b * y_P) / (x_P * Y_b * (X_1 - X_0))
             // = final Z^-1
 
             // (x1, y1) = R_{1-b}, (x2, y2) = R_b
-            sb_sw_point_co_z_add_update(m, state.curve);
+            sb_sw_point_co_z_add_update(m, curve);
             // the logical meaning of the registers is reversed
             // (x1, y1) = R_b, (x2, y2) = R_{1-b}
 
@@ -508,9 +538,9 @@ sb_sw_point_mult_continue(sb_sw_context_t m[static const 1])
             // y2 = Y0 * Z^3 * R
 
             sb_fe_mont_square(C_T5(m), C_T8(m),
-                              state.curve->p); // t5 = Z^-2 * R
+                              curve->p); // t5 = Z^-2 * R
             sb_fe_mont_mult(C_T6(m), C_T5(m), C_T8(m),
-                            state.curve->p); // t6 = Z^-3 * R
+                            curve->p); // t6 = Z^-3 * R
 
             // Handle the exceptional cases of multiplies by -1 or 1 here. Because
             // the scalar has not been re-inverted yet, the value of MULT_K(m) will
@@ -526,42 +556,42 @@ sb_sw_point_mult_continue(sb_sw_context_t m[static const 1])
             // Apply the recovered Z to produce the X value of the output point, in the
             // Montgomery domain.
             sb_fe_mont_mult(C_T7(m), C_T5(m), C_X2(m),
-                            state.curve->p); // t7 = X0 * Z^-2 * R
+                            curve->p); // t7 = X0 * Z^-2 * R
 
             // Add X_P and swap iff the scalar is 1.
-            sb_fe_mod_add(C_X2(m), C_T7(m), MULT_POINT_X(m), state.curve->p);
+            sb_fe_mod_add(C_X2(m), C_T7(m), MULT_POINT_X(m), curve->p);
             // x2 = t7 + x_P
             sb_fe_ctswap(state.k_one, C_T7(m), C_X2(m));
 
             sb_fe_mont_reduce(C_X1(m), C_T7(m),
-                              state.curve->p); // Montgomery reduce to x1
+                              curve->p); // Montgomery reduce to x1
 
             // Apply the recovered Z to produce the Y value of the output point, in the
             // Montgomery domain.
             sb_fe_mont_mult(C_T7(m), C_T6(m), C_Y2(m),
-                            state.curve->p); // t7 = Y0 * Z^-3 * R
+                            curve->p); // t7 = Y0 * Z^-3 * R
 
             // Add Y_P and swap iff the scalar is 1.
-            sb_fe_mod_add(C_Y2(m), C_T7(m), MULT_POINT_Y(m), state.curve->p);
+            sb_fe_mod_add(C_Y2(m), C_T7(m), MULT_POINT_Y(m), curve->p);
             // y2 = t7 + y_P
             sb_fe_ctswap(state.k_one, C_T7(m), C_Y2(m));
 
             sb_fe_mont_reduce(C_Y1(m), C_T7(m),
-                              state.curve->p); // Montgomery reduce to y1
+                              curve->p); // Montgomery reduce to y1
 
             // If the scalar was inverted, invert the output point. On a short
             // Weierstrass curve, -(X, Y) = (X, -Y).
-            sb_fe_mod_negate(C_T5(m), C_Y1(m), state.curve->p);
+            sb_fe_mod_negate(C_T5(m), C_Y1(m), curve->p);
             sb_fe_ctswap(state.inv_k, C_Y1(m), C_T5(m));
 
             sb_fe_sub(MULT_K(m), MULT_K(m),
-                      &state.curve->n->p); // subtract off the overflow
+                      &curve->n->p); // subtract off the overflow
             sb_fe_mod_reduce(MULT_K(m),
-                             state.curve->n); // reduce to restore original scalar
+                             curve->n); // reduce to restore original scalar
 
             // And finally, if the scalar was inverted, re-invert it to restore the
             // original value.
-            sb_fe_mod_negate(C_T5(m), MULT_K(m), state.curve->n);
+            sb_fe_mod_negate(C_T5(m), MULT_K(m), curve->n);
             sb_fe_ctswap(state.inv_k, C_T5(m), MULT_K(m));
 
             // This operation is done.
@@ -700,10 +730,11 @@ static void sb_sw_point_mult_add_select(const sb_word_t bp, const sb_word_t bg,
 // choice, as any signature created with this private key might be forged.
 
 // Produces kp * P + kg * G in (x1, y1) with Z * R in Z
-static _Bool sb_sw_point_mult_add_z_continue(sb_sw_context_t q[static const 1])
+static _Bool sb_sw_point_mult_add_z_continue
+    (sb_sw_context_t q[static const 1],
+     const sb_sw_curve_t s[static const 1])
 {
     sb_sw_context_saved_state_t state = *MULT_STATE(q);
-    const sb_sw_curve_t* const s = state.curve;
 
     switch (state.stage) {
         case SB_SW_VERIFY_OP_STAGE_INV_Z: {
@@ -799,10 +830,10 @@ static _Bool sb_sw_point_mult_add_z_continue(sb_sw_context_t q[static const 1])
 
             // This loop goes from 255 down to 0, inclusive. When state.i
             // reaches 0 and is decremented, it wraps around to the most
-            // positive size_t, which is greater than or equal to SB_FE_BITS
+            // positive sb_size_t, which is greater than or equal to SB_FE_BITS
             // (by quite a lot!).
 
-            for (size_t ops = 0;
+            for (sb_bitcount_t ops = 0;
                  state.i < SB_FE_BITS && ops < SB_SW_POINT_ITERATIONS;
                  state.i--, ops++) {
                 const sb_word_t bp = sb_fe_test_bit(MULT_K(q), state.i);
@@ -821,7 +852,8 @@ static _Bool sb_sw_point_mult_add_z_continue(sb_sw_context_t q[static const 1])
             }
 
             // If the loop terminated because state.i was decremented from 0,
-            // then state.i is the most positive size_t, which is >= SB_FE_BITS
+            // then state.i is the most positive sb_size_t, which is
+            // >= SB_FE_BITS
 
             if (state.i >= SB_FE_BITS) {
                 *C_T6(q) = *C_X1(q);
@@ -974,10 +1006,10 @@ sb_sw_sign_start(sb_sw_context_t g[static const 1],
 
     *MULT_STATE(g) = (sb_sw_context_saved_state_t) {
         .operation = SB_SW_INCREMENTAL_OPERATION_SIGN_MESSAGE_DIGEST,
-        .curve = s
+        .curve_id = s->id
     };
 
-    sb_sw_point_mult_start(g);
+    sb_sw_point_mult_start(g, s);
 }
 
 static _Bool sb_sw_sign_is_finished(sb_sw_context_t g[static const 1])
@@ -988,18 +1020,18 @@ static _Bool sb_sw_sign_is_finished(sb_sw_context_t g[static const 1])
 // Places (r, s) into (x2, y2) when finished
 static sb_error_t
 sb_sw_sign_continue(sb_sw_context_t g[static const 1],
+                    const sb_sw_curve_t s[static const 1],
                     _Bool done[static const 1])
 {
+    sb_error_t err = SB_SUCCESS;
+
     switch (MULT_STATE(g)->stage) {
         case SB_SW_SIGN_OP_STAGE_DONE: {
             *done = 1;
             return SB_SUCCESS;
         }
         case SB_SW_SIGN_OP_STAGE_INV: {
-            sb_error_t err = SB_SUCCESS;
             sb_sw_context_saved_state_t state = *MULT_STATE(g);
-
-            const sb_sw_curve_t* const s = state.curve;
 
             // This is used to quasi-reduce x1 modulo the curve N:
             *C_X2(g) = *C_X1(g);
@@ -1029,7 +1061,7 @@ sb_sw_sign_continue(sb_sw_context_t g[static const 1],
             return err;
         }
         default: {
-            sb_sw_point_mult_continue(g);
+            sb_sw_point_mult_continue(g, s);
             *done = 0;
             return SB_SUCCESS; // it's not done until the signing inversion is done
         }
@@ -1043,14 +1075,14 @@ static void sb_sw_verify_start(sb_sw_context_t v[static const 1],
         .operation = SB_SW_INCREMENTAL_OPERATION_VERIFY_SIGNATURE,
         .stage = SB_SW_VERIFY_OP_STAGE_INV_S,
         .res = 1,
-        .curve = s
+        .curve_id = s->id
     };
 }
 
-static _Bool sb_sw_verify_continue(sb_sw_context_t v[static const 1])
+static _Bool sb_sw_verify_continue(sb_sw_context_t v[static const 1],
+                                   const sb_sw_curve_t s[static const 1])
 {
     sb_sw_context_saved_state_t state = *MULT_STATE(v);
-    const sb_sw_curve_t* const s = state.curve;
 
     switch (state.stage) {
         case SB_SW_VERIFY_OP_STAGE_INV_S: {
@@ -1077,7 +1109,7 @@ static _Bool sb_sw_verify_continue(sb_sw_context_t v[static const 1])
         }
         case SB_SW_VERIFY_OP_STAGE_INV_Z:
         case SB_SW_VERIFY_OP_STAGE_LADDER: {
-            sb_sw_point_mult_add_z_continue(v);
+            sb_sw_point_mult_add_z_continue(v, s);
             return 0;
         }
         case SB_SW_VERIFY_OP_STAGE_TEST: {
@@ -1135,33 +1167,6 @@ static _Bool sb_sw_verify_is_finished(sb_sw_context_t v[static const 1])
     return MULT_STATE(v)->stage == SB_SW_VERIFY_OP_DONE;
 }
 
-static sb_error_t sb_sw_curve_from_id(const sb_sw_curve_t** const s,
-                                      sb_sw_curve_id_t const curve)
-{
-    switch (curve) {
-#if SB_SW_P256_SUPPORT
-        case SB_SW_CURVE_P256: {
-            *s = &SB_CURVE_P256;
-            return 0;
-        }
-#endif
-#if SB_SW_SECP256K1_SUPPORT
-        case SB_SW_CURVE_SECP256K1: {
-            *s = &SB_CURVE_SECP256K1;
-            return 0;
-        }
-#endif
-#ifdef SB_TEST
-        case SB_SW_CURVE_INVALID:
-            break;
-#endif
-    }
-    // Huh?
-    *s = NULL;
-    return SB_ERROR_CURVE_INVALID;
-}
-
-
 // Generate a Z from SB_SW_FIPS186_4_CANDIDATES worth of DRBG-produced data
 // in c->param_gen.buf. Note that this tests a fixed number of candidates, and
 // if it succeeds, there is no bias in the generated Z values.
@@ -1173,7 +1178,7 @@ static sb_error_t sb_sw_z_from_buf(sb_sw_context_t ctx[static const 1],
 
     sb_fe_from_bytes(MULT_Z(ctx), ctx->param_gen.buf, e);
 
-    for (size_t i = 1; i < SB_SW_FIPS186_4_CANDIDATES; i++) {
+    for (sb_size_t i = 1; i < SB_SW_FIPS186_4_CANDIDATES; i++) {
         /* Is the current candidate valid? */
         const sb_word_t zv = sb_sw_z_validate(MULT_Z(ctx), s);
 
@@ -1267,7 +1272,7 @@ static sb_error_t sb_sw_k_from_buf(sb_sw_context_t ctx[static const 1],
         sb_fe_add(MULT_K(ctx), MULT_K(ctx), &SB_FE_ONE);
     }
 
-    for (size_t i = 1; i < SB_SW_FIPS186_4_CANDIDATES; i++) {
+    for (sb_size_t i = 1; i < SB_SW_FIPS186_4_CANDIDATES; i++) {
         /* Is the current candidate valid? */
         sb_word_t kv = sb_sw_scalar_validate(MULT_K(ctx), s);
 
@@ -1308,7 +1313,7 @@ sb_error_t sb_sw_generate_private_key(sb_sw_context_t ctx[static const 1],
     SB_NULLIFY(ctx);
     SB_NULLIFY(private);
 
-    const sb_sw_curve_t* s;
+    const sb_sw_curve_t* s = NULL;
     err |= sb_sw_curve_from_id(&s, curve);
 
     // Avoid modifying the input drbg state if a generate call will fail.
@@ -1321,15 +1326,15 @@ sb_error_t sb_sw_generate_private_key(sb_sw_context_t ctx[static const 1],
     // verification that the correct number of candidates are tested.
     err |= sb_hmac_drbg_reseed_required(drbg, SB_SW_FIPS186_4_CANDIDATES);
 
-    SB_RETURN_ERRORS(err);
+    SB_RETURN_ERRORS(err, ctx);
 
-    for (size_t i = 0; i < SB_SW_FIPS186_4_CANDIDATES; i++) {
+    for (sb_size_t i = 0; i < SB_SW_FIPS186_4_CANDIDATES; i++) {
         err |= sb_hmac_drbg_generate_additional_dummy
             (drbg, &ctx->param_gen.buf[i * SB_ELEM_BYTES], SB_ELEM_BYTES);
         SB_ASSERT(!err, "Private key generation should never fail.");
     }
 
-    SB_RETURN_ERRORS(err);
+    SB_RETURN_ERRORS(err, ctx);
 
     /* Test and select a candidate from the filled buffer. */
     err |= sb_sw_k_from_buf(ctx, 1, s, e);
@@ -1354,11 +1359,11 @@ sb_error_t sb_sw_hkdf_expand_private_key(sb_sw_context_t ctx[static const 1],
     SB_NULLIFY(ctx);
     SB_NULLIFY(private);
 
-    const sb_sw_curve_t* s;
+    const sb_sw_curve_t* s = NULL;
     err |= sb_sw_curve_from_id(&s, curve);
 
     // Bail out early if the curve is invalid.
-    SB_RETURN_ERRORS(err);
+    SB_RETURN_ERRORS(err, ctx);
 
     /* Generate SB_SW_FIPS186_4_CANDIDATES values to test by expanding the
      * given HKDF instance with the given info. */
@@ -1386,7 +1391,7 @@ sb_error_t sb_sw_invert_private_key(sb_sw_context_t ctx[static const 1],
     SB_NULLIFY(ctx);
     SB_NULLIFY(output);
 
-    const sb_sw_curve_t* s;
+    const sb_sw_curve_t* s = NULL;
     err |= sb_sw_curve_from_id(&s, curve);
 
     /* Scalar inversion blinding factor generation is done in one generate
@@ -1396,7 +1401,7 @@ sb_error_t sb_sw_invert_private_key(sb_sw_context_t ctx[static const 1],
     }
 
     // Bail out early if the curve is invalid or the DRBG needs to be reseeded.
-    SB_RETURN_ERRORS(err);
+    SB_RETURN_ERRORS(err, ctx);
 
     /* Generate a random scalar to use as part of blinding. */
     if (drbg != NULL) {
@@ -1480,7 +1485,7 @@ sb_error_t sb_sw_compute_public_key_start
     // Nullify the context.
     SB_NULLIFY(ctx);
 
-    const sb_sw_curve_t* s;
+    const sb_sw_curve_t* s = NULL;
     err |= sb_sw_curve_from_id(&s, curve);
 
     // Bail out early if the DRBG needs to be reseeded
@@ -1489,7 +1494,7 @@ sb_error_t sb_sw_compute_public_key_start
     }
 
     // Return invalid-curve and DRBG errors immediately.
-    SB_RETURN_ERRORS(err);
+    SB_RETURN_ERRORS(err, ctx);
 
     // Generate a Z for projective coordinate randomization.
     static const sb_byte_t label[] = "sb_sw_compute_public_key";
@@ -1511,10 +1516,10 @@ sb_error_t sb_sw_compute_public_key_start
     *MULT_STATE(ctx) =
         (sb_sw_context_saved_state_t) {
             .operation = SB_SW_INCREMENTAL_OPERATION_COMPUTE_PUBLIC_KEY,
-            .curve = s
+            .curve_id = s->id
         };
 
-    sb_sw_point_mult_start(ctx);
+    sb_sw_point_mult_start(ctx, s);
 
     return err;
 }
@@ -1531,7 +1536,11 @@ sb_error_t sb_sw_compute_public_key_continue
 
     SB_RETURN_ERRORS(err, ctx);
 
-    *done = sb_sw_point_mult_continue(ctx);
+    const sb_sw_curve_t* curve = NULL;
+    err |= sb_sw_curve_from_id(&curve, MULT_STATE(ctx)->curve_id);
+    SB_RETURN_ERRORS(err, ctx);
+
+    *done = sb_sw_point_mult_continue(ctx, curve);
 
     return err;
 }
@@ -1556,7 +1565,9 @@ sb_error_t sb_sw_compute_public_key_finish
 
     SB_RETURN_ERRORS(err, ctx);
 
-    const sb_sw_curve_t* s = MULT_STATE(ctx)->curve;
+    const sb_sw_curve_t* s = NULL;
+    err |= sb_sw_curve_from_id(&s, MULT_STATE(ctx)->curve_id);
+    SB_RETURN_ERRORS(err, ctx);
 
     // The output is quasi-reduced, so the point at infinity is (p, p).
     // This should never occur with valid scalars.
@@ -1604,10 +1615,10 @@ sb_error_t sb_sw_valid_private_key(sb_sw_context_t ctx[static const 1],
 
     SB_NULLIFY(ctx);
 
-    const sb_sw_curve_t* s;
+    const sb_sw_curve_t* s = NULL;
     err |= sb_sw_curve_from_id(&s, curve);
 
-    SB_RETURN_ERRORS(err);
+    SB_RETURN_ERRORS(err, ctx);
 
     sb_fe_from_bytes(MULT_K(ctx), private->bytes, e);
 
@@ -1626,10 +1637,10 @@ sb_error_t sb_sw_valid_public_key(sb_sw_context_t ctx[static const 1],
 
     SB_NULLIFY(ctx);
 
-    const sb_sw_curve_t* s;
+    const sb_sw_curve_t* s = NULL;
     err |= sb_sw_curve_from_id(&s, curve);
 
-    SB_RETURN_ERRORS(err);
+    SB_RETURN_ERRORS(err, ctx);
 
     sb_fe_from_bytes(MULT_POINT_X(ctx), public->bytes, e);
     sb_fe_from_bytes(MULT_POINT_Y(ctx), public->bytes + SB_ELEM_BYTES, e);
@@ -1653,10 +1664,10 @@ sb_error_t sb_sw_compress_public_key(sb_sw_context_t ctx[static const 1],
     SB_NULLIFY(compressed);
     SB_NULLIFY(sign);
 
-    const sb_sw_curve_t* s;
+    const sb_sw_curve_t* s = NULL;
     err |= sb_sw_curve_from_id(&s, curve);
 
-    SB_RETURN_ERRORS(err);
+    SB_RETURN_ERRORS(err, ctx);
 
     sb_fe_from_bytes(MULT_POINT_X(ctx), public->bytes, e);
     sb_fe_from_bytes(MULT_POINT_Y(ctx), public->bytes + SB_ELEM_BYTES, e);
@@ -1689,10 +1700,10 @@ sb_error_t sb_sw_decompress_public_key
     SB_NULLIFY(ctx);
     SB_NULLIFY(public);
 
-    const sb_sw_curve_t* s;
+    const sb_sw_curve_t* s = NULL;
     err |= sb_sw_curve_from_id(&s, curve);
 
-    SB_RETURN_ERRORS(err);
+    SB_RETURN_ERRORS(err, ctx);
 
     sb_fe_from_bytes(MULT_POINT_X(ctx), compressed->bytes, e);
     err |= SB_ERROR_IF(PUBLIC_KEY_INVALID,
@@ -1719,7 +1730,7 @@ static sb_error_t sb_sw_multiply_shared_start
 
     // The context has already been nullified.
 
-    const sb_sw_curve_t* s;
+    const sb_sw_curve_t* s = NULL;
     err |= sb_sw_curve_from_id(&s, curve);
 
     // Bail out early if the DRBG needs to be reseeded
@@ -1727,7 +1738,7 @@ static sb_error_t sb_sw_multiply_shared_start
         err |= sb_hmac_drbg_reseed_required(drbg, 1);
     }
 
-    SB_RETURN_ERRORS(err);
+    SB_RETURN_ERRORS(err, ctx);
 
     // Only the X coordinate of the public key is used as the nonce, since
     // the Y coordinate is not an independent input.
@@ -1759,10 +1770,10 @@ static sb_error_t sb_sw_multiply_shared_start
 
     *MULT_STATE(ctx) = (sb_sw_context_saved_state_t) {
         .operation = op,
-        .curve = s
+        .curve_id = s->id
     };
 
-    sb_sw_point_mult_start(ctx);
+    sb_sw_point_mult_start(ctx, s);
 
     return err;
 }
@@ -1791,14 +1802,17 @@ sb_error_t sb_sw_shared_secret_continue
      _Bool done[static const 1])
 {
     sb_error_t err = SB_SUCCESS;
+    const sb_sw_curve_t* curve = NULL;
 
     err |= SB_ERROR_IF(INCORRECT_OPERATION,
                        MULT_STATE(ctx)->operation !=
                        SB_SW_INCREMENTAL_OPERATION_SHARED_SECRET);
 
+    err |= sb_sw_curve_from_id(&curve, MULT_STATE(ctx)->curve_id);
+
     SB_RETURN_ERRORS(err, ctx);
 
-    *done = sb_sw_point_mult_continue(ctx);
+    *done = sb_sw_point_mult_continue(ctx, curve);
 
     return err;
 }
@@ -1808,6 +1822,7 @@ sb_error_t sb_sw_shared_secret_finish(sb_sw_context_t ctx[static const 1],
                                       const sb_data_endian_t e)
 {
     sb_error_t err = SB_SUCCESS;
+    const sb_sw_curve_t* s = NULL;
 
     // Nullify the output before doing context validity checks.
     SB_NULLIFY(secret);
@@ -1816,13 +1831,13 @@ sb_error_t sb_sw_shared_secret_finish(sb_sw_context_t ctx[static const 1],
                        MULT_STATE(ctx)->operation !=
                        SB_SW_INCREMENTAL_OPERATION_SHARED_SECRET);
 
+    err |= sb_sw_curve_from_id(&s, MULT_STATE(ctx)->curve_id);
+
     SB_RETURN_ERRORS(err, ctx);
 
     err |= SB_ERROR_IF(NOT_FINISHED, !sb_sw_point_mult_is_finished(ctx));
 
     SB_RETURN_ERRORS(err, ctx);
-
-    const sb_sw_curve_t* s = MULT_STATE(ctx)->curve;
 
     // This should never occur with a valid private scalar.
     err |= SB_ERROR_IF(PRIVATE_KEY_INVALID,
@@ -1886,14 +1901,17 @@ sb_error_t sb_sw_point_multiply_continue
      _Bool done[static const 1])
 {
     sb_error_t err = SB_SUCCESS;
+    const sb_sw_curve_t* s = NULL;
 
     err |= SB_ERROR_IF(INCORRECT_OPERATION,
                        MULT_STATE(ctx)->operation !=
                        SB_SW_INCREMENTAL_OPERATION_POINT_MULTIPLY);
 
+    err |= sb_sw_curve_from_id(&s, MULT_STATE(ctx)->curve_id);
+
     SB_RETURN_ERRORS(err, ctx);
 
-    *done = sb_sw_point_mult_continue(ctx);
+    *done = sb_sw_point_mult_continue(ctx, s);
 
     return err;
 }
@@ -1903,6 +1921,7 @@ sb_error_t sb_sw_point_multiply_finish(sb_sw_context_t ctx[static const 1],
                                        const sb_data_endian_t e)
 {
     sb_error_t err = SB_SUCCESS;
+    const sb_sw_curve_t* s = NULL;
 
     // Nullify the output before doing context validity checks.
     SB_NULLIFY(output);
@@ -1911,13 +1930,13 @@ sb_error_t sb_sw_point_multiply_finish(sb_sw_context_t ctx[static const 1],
                        MULT_STATE(ctx)->operation !=
                        SB_SW_INCREMENTAL_OPERATION_POINT_MULTIPLY);
 
+    err |= sb_sw_curve_from_id(&s, MULT_STATE(ctx)->curve_id);
+
     SB_RETURN_ERRORS(err, ctx);
 
     err |= SB_ERROR_IF(NOT_FINISHED, !sb_sw_point_mult_is_finished(ctx));
 
     SB_RETURN_ERRORS(err, ctx);
-
-    const sb_sw_curve_t* s = MULT_STATE(ctx)->curve;
 
     // This should never occur with a valid private scalar.
     err |= SB_ERROR_IF(PRIVATE_KEY_INVALID,
@@ -2009,11 +2028,11 @@ sb_error_t sb_sw_sign_message_digest_with_k_beware_of_the_leopard
     SB_NULLIFY(ctx);
     SB_NULLIFY(signature);
 
-    const sb_sw_curve_t* s;
+    const sb_sw_curve_t* s = NULL;
     err |= sb_sw_curve_from_id(&s, curve);
 
     // Return early if the supplied curve is invalid.
-    SB_RETURN_ERRORS(err);
+    SB_RETURN_ERRORS(err, ctx);
 
     sb_fe_from_bytes(MULT_K(ctx), k->bytes, SB_ELEM_BYTES);
 
@@ -2036,7 +2055,7 @@ sb_error_t sb_sw_sign_message_digest_with_k_beware_of_the_leopard
 
     _Bool done;
     do {
-        err |= sb_sw_sign_continue(ctx, &done);
+        err |= sb_sw_sign_continue(ctx, s, &done);
         SB_RETURN_ERRORS(err, ctx);
     } while (!done);
 
@@ -2062,7 +2081,7 @@ sb_error_t sb_sw_sign_message_digest_start
     // Nullify the context.
     SB_NULLIFY(ctx);
 
-    const sb_sw_curve_t* s;
+    const sb_sw_curve_t* s = NULL;
     err |= sb_sw_curve_from_id(&s, curve);
 
     // Bail out early if the DRBG needs to be reseeded
@@ -2073,7 +2092,7 @@ sb_error_t sb_sw_sign_message_digest_start
                                             SB_SW_FIPS186_4_CANDIDATES + 1);
     }
 
-    SB_RETURN_ERRORS(err);
+    SB_RETURN_ERRORS(err, ctx);
 
     // If a DRBG is provided, FIPS186-4 mode is used. Otherwise, RFC6979
     // deterministic signature generation is used.
@@ -2104,7 +2123,7 @@ sb_error_t sb_sw_sign_message_digest_start
 
         // Provide additional input on each subsequent call in order to
         // ensure backtracking resistance in the DRBG.
-        for (size_t i = 1; i < SB_SW_FIPS186_4_CANDIDATES; i++) {
+        for (sb_size_t i = 1; i < SB_SW_FIPS186_4_CANDIDATES; i++) {
             err |= sb_hmac_drbg_generate_additional_dummy
                 (drbg,
                  &ctx->param_gen.buf[i * SB_ELEM_BYTES],
@@ -2140,7 +2159,7 @@ sb_error_t sb_sw_sign_message_digest_start
         // This call to sb_hmac_drbg_generate can't be replaced by a call to
         // sb_hmac_drbg_generate_additional_dummy as it would break
         // compatibility with RFC6979 (and its test vectors).
-        for (size_t i = 0; i < SB_SW_FIPS186_4_CANDIDATES; i++) {
+        for (sb_size_t i = 0; i < SB_SW_FIPS186_4_CANDIDATES; i++) {
             err |= sb_hmac_drbg_generate(drbg,
                                          &ctx->param_gen.buf[i * SB_ELEM_BYTES],
                                          SB_ELEM_BYTES);
@@ -2208,14 +2227,17 @@ sb_error_t sb_sw_sign_message_digest_continue
      _Bool done[static const 1])
 {
     sb_error_t err = SB_SUCCESS;
+    const sb_sw_curve_t* curve = NULL;
 
     err |= SB_ERROR_IF(INCORRECT_OPERATION,
                        MULT_STATE(ctx)->operation !=
                        SB_SW_INCREMENTAL_OPERATION_SIGN_MESSAGE_DIGEST);
 
+    err |= sb_sw_curve_from_id(&curve, MULT_STATE(ctx)->curve_id);
+
     SB_RETURN_ERRORS(err, ctx);
 
-    err |= sb_sw_sign_continue(ctx, done);
+    err |= sb_sw_sign_continue(ctx, curve, done);
     SB_RETURN_ERRORS(err, ctx);
 
     return err;
@@ -2305,7 +2327,7 @@ sb_error_t sb_sw_verify_signature_start
     // Nullify the context.
     SB_NULLIFY(ctx);
 
-    const sb_sw_curve_t* s;
+    const sb_sw_curve_t* s = NULL;
     err |= sb_sw_curve_from_id(&s, curve);
 
     // Bail out early if the DRBG needs to be reseeded
@@ -2313,7 +2335,7 @@ sb_error_t sb_sw_verify_signature_start
         err |= sb_hmac_drbg_reseed_required(drbg, 1);
     }
 
-    SB_RETURN_ERRORS(err);
+    SB_RETURN_ERRORS(err, ctx);
 
     // Only the X coordinate of the public key is used as input to initial Z
     // generation, as the Y coordinate is not an independent input.
@@ -2363,14 +2385,17 @@ sb_error_t sb_sw_verify_signature_continue(sb_sw_context_t ctx[static const 1],
                                            _Bool done[static const 1])
 {
     sb_error_t err = SB_SUCCESS;
+    const sb_sw_curve_t* curve = NULL;
 
     err |= SB_ERROR_IF(INCORRECT_OPERATION,
                        MULT_STATE(ctx)->operation !=
                        SB_SW_INCREMENTAL_OPERATION_VERIFY_SIGNATURE);
 
+    err |= sb_sw_curve_from_id(&curve, MULT_STATE(ctx)->curve_id);
+
     SB_RETURN_ERRORS(err, ctx);
 
-    *done = sb_sw_verify_continue(ctx);
+    *done = sb_sw_verify_continue(ctx, curve);
 
     return err;
 }
