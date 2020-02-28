@@ -420,7 +420,7 @@ static const sb_fe_t SB_FE_ZERO = SB_FE_CONST(0, 0, 0, 0);
     SB_ASSERT((fe)->qr_always || \
               ((fe)->qr && (fe)->p == (prime)) || \
               ((fe)->qr && sb_fe_lt(&(fe)->p->p, &(prime)->p)), \
-    "fe must be quasi-reduced!");
+    "fe must be quasi-reduced!")
 #else
 #define SB_FE_UNQR(fe) do { } while (0)
 #define SB_FE_QR(fe, prime) do { } while (0)
