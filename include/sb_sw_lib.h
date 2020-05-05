@@ -692,6 +692,62 @@ extern sb_error_t sb_sw_sign_message_digest_finish
      sb_sw_signature_t signature[static 1],
      sb_data_endian_t e);
 
+/** Produces a modified message digest that, when signed by some external
+ *  private key with public key P, creates a signature that can be processed
+ *  by \ref sb_sw_composite_sign_unwrap_signature to produce a valid
+ *  signature under the composite public key \p private * P. The composite
+ *  public key can be computed using \ref sb_sw_point_multiply.
+ *
+ * @param [in] context Private context structure allocated by the caller.
+ * @param [out] wrapped Wrapped message digest.
+ * @param [in] message Original message digest to be wrapped.
+ * @param [in] private Private key to be combined with \p
+ * message_digest.
+ * @param [in] drbg Optional DRBG, used to generate entropy for side-channel
+ * mitigations.
+ * @param [in] curve The curve to use when wrapping the message.
+ * @param [in] e Endianness of \p output, \p private, and \p message_digest.
+ * Use big endian for most situations.
+ * @return On success, \ref SB_SUCCESS. Fails if the curve specified is
+ * invalid, the private key supplied is invalid, if the optionally supplied
+ * DRBG requires reseeding, or in case of DRBG failure.
+ */
+extern sb_error_t sb_sw_composite_sign_wrap_message_digest
+    (sb_sw_context_t context[static 1],
+     sb_sw_message_digest_t wrapped[static 1],
+     const sb_sw_message_digest_t message[static 1],
+     const sb_sw_private_t private[static 1],
+     sb_hmac_drbg_state_t* drbg,
+     sb_sw_curve_id_t curve,
+     sb_data_endian_t e);
+
+/** Produces a modified signature of a message digest previously wrapped by
+ *  \ref sb_sw_composite_sign_wrap_message_digest and signed by some external
+ *  private key with public key P. The result is a valid signature of the
+ *  pre-wrapped message which can be verified using the composite public key
+ *  private * P. The composite public key can be computed using \ref
+ *  sb_sw_point_multiply.
+ *
+ *  @param [in] context Private context structure allocated by the caller.
+ *  @param [out] unwrapped Unwrapped signature which can be verified using
+ *  the composite public key.
+ *  @param [in] signature ECDSA signature signed using a different private
+ *  scalar.
+ *  @param [in] private Private key to be combined with \p signature.
+ *  @param [in] curve The curve to use when unwrapping the signature.
+ *  @param [in] e Endianness of \p output, \p private, and \p signature. Use
+ *  big endian for most situations.
+ *  @return On success, \ref SB_SUCCESS. Fails if the curve specified is
+ *  invalid or if the private key supplied is invalid.
+ */
+extern sb_error_t sb_sw_composite_sign_unwrap_signature
+    (sb_sw_context_t context[static 1],
+     sb_sw_signature_t unwrapped[static 1],
+     const sb_sw_signature_t signature[static 1],
+     const sb_sw_private_t private[static 1],
+     sb_sw_curve_id_t curve,
+     sb_data_endian_t e);
+
 /** Verifies a supplied signature of the SHA256 digest of a provided message
  *  using a given public key.
  *

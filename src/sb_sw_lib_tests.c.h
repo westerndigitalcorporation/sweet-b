@@ -751,6 +751,22 @@ _Bool sb_test_shared_secret_cavp_1(void)
     return 1;
 }
 
+
+// Created for use in sb_test_shared_secret_secp256k1.
+// Also used in sb_test_sw_invalid_scalar as a valid public key for
+// secp256k1
+static const sb_sw_public_t TEST_PUB_SECP256K1 = {
+    {
+        0x6D, 0x98, 0x65, 0x44, 0x57, 0xFF, 0x52, 0xB8,
+        0xCF, 0x1B, 0x81, 0x26, 0x5B, 0x80, 0x2A, 0x5B,
+        0xA9, 0x7F, 0x92, 0x63, 0xB1, 0xE8, 0x80, 0x44,
+        0x93, 0x35, 0x13, 0x25, 0x91, 0xBC, 0x45, 0x0A,
+        0x53, 0x5C, 0x59, 0xF7, 0x32, 0x5E, 0x5D, 0x2B,
+        0xC3, 0x91, 0xFB, 0xE8, 0x3C, 0x12, 0x78, 0x7C,
+        0x33, 0x7E, 0x4A, 0x98, 0xE8, 0x2A, 0x90, 0x11,
+        0x01, 0x23, 0xBA, 0x37, 0xDD, 0x76, 0x9C, 0x7D
+    }};
+
 // This shared-secret unit test is shamelessly borrowed from libsecp256k1.
 _Bool sb_test_shared_secret_secp256k1(void)
 {
@@ -760,17 +776,6 @@ _Bool sb_test_shared_secret_secp256k1(void)
             0x7F, 0x20, 0x79, 0xC9, 0x14, 0x53, 0x03, 0x27,
             0xA3, 0x1B, 0x87, 0x6A, 0xD2, 0xD8, 0xCE, 0x2A,
             0x22, 0x36, 0xD5, 0xC6, 0xD7, 0xB2, 0x02, 0x9B
-        }};
-    static const sb_sw_public_t p = {
-        {
-            0x6D, 0x98, 0x65, 0x44, 0x57, 0xFF, 0x52, 0xB8,
-            0xCF, 0x1B, 0x81, 0x26, 0x5B, 0x80, 0x2A, 0x5B,
-            0xA9, 0x7F, 0x92, 0x63, 0xB1, 0xE8, 0x80, 0x44,
-            0x93, 0x35, 0x13, 0x25, 0x91, 0xBC, 0x45, 0x0A,
-            0x53, 0x5C, 0x59, 0xF7, 0x32, 0x5E, 0x5D, 0x2B,
-            0xC3, 0x91, 0xFB, 0xE8, 0x3C, 0x12, 0x78, 0x7C,
-            0x33, 0x7E, 0x4A, 0x98, 0xE8, 0x2A, 0x90, 0x11,
-            0x01, 0x23, 0xBA, 0x37, 0xDD, 0x76, 0x9C, 0x7D
         }};
     static const sb_sw_shared_secret_t s = {
         {
@@ -782,8 +787,8 @@ _Bool sb_test_shared_secret_secp256k1(void)
     sb_sw_shared_secret_t out;
     sb_sw_context_t ct;
     SB_TEST_ASSERT_SUCCESS(
-        sb_sw_shared_secret(&ct, &out, &d, &p, NULL, SB_SW_CURVE_SECP256K1,
-                            SB_DATA_ENDIAN_BIG));
+        sb_sw_shared_secret(&ct, &out, &d, &TEST_PUB_SECP256K1, NULL,
+                            SB_SW_CURVE_SECP256K1, SB_DATA_ENDIAN_BIG));
     SB_TEST_ASSERT_EQUAL(s, out);
     return 1;
 }
@@ -1498,6 +1503,17 @@ _Bool sb_test_sw_early_errors(void)
                                &drbg, SB_SW_CURVE_INVALID,
                                SB_DATA_ENDIAN_BIG),
         SB_ERROR_CURVE_INVALID, SB_ERROR_RESEED_REQUIRED);
+    SB_TEST_ASSERT_ERROR(
+        sb_sw_composite_sign_wrap_message_digest(&ct, &s, &TEST_MESSAGE,
+                                                 &TEST_PRIV_1, &drbg,
+                                                 SB_SW_CURVE_INVALID,
+                                                 SB_DATA_ENDIAN_BIG),
+        SB_ERROR_CURVE_INVALID, SB_ERROR_RESEED_REQUIRED);
+    SB_TEST_ASSERT_ERROR(
+        sb_sw_composite_sign_unwrap_signature(&ct, &d, &TEST_SIG, &TEST_PRIV_1,
+                                              SB_SW_CURVE_INVALID,
+                                              SB_DATA_ENDIAN_BIG),
+                        SB_ERROR_CURVE_INVALID);
 
     d = TEST_PUB_1;
     d.bytes[0] ^= 1;
@@ -1506,19 +1522,161 @@ _Bool sb_test_sw_early_errors(void)
     // correct error indications when the point is not on the curve:
 
     SB_TEST_ASSERT_ERROR(
-        sb_sw_shared_secret(&ct, &s, &TEST_PRIV_1, &d, NULL,
-                            SB_SW_CURVE_P256, SB_DATA_ENDIAN_BIG),
-        SB_ERROR_PUBLIC_KEY_INVALID);
-
-    SB_TEST_ASSERT_ERROR(
         sb_sw_verify_signature(&ct, &TEST_SIG, &d, &TEST_MESSAGE, NULL,
                                SB_SW_CURVE_P256, SB_DATA_ENDIAN_BIG),
+        SB_ERROR_PUBLIC_KEY_INVALID);
+    SB_TEST_ASSERT_ERROR(
+        sb_sw_shared_secret(&ct, &s, &TEST_PRIV_1, &d, NULL,
+                            SB_SW_CURVE_P256, SB_DATA_ENDIAN_BIG),
         SB_ERROR_PUBLIC_KEY_INVALID);
 
     return 1;
 }
 
+// Test that calling functions which accept a private scalar fail when
+// the private key is not valid for the specified curve.
+//
+_Bool sb_test_sw_invalid_scalar(void)
+{
+    const sb_sw_private_t bad_priv = {
+        0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
+        0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
+        0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
+        0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
+    };
+
+    sb_sw_context_t ct;
+    sb_double_t d;
+    sb_single_t s;
+
+    SB_TEST_ASSERT_ERROR(
+        sb_sw_valid_private_key(&ct, &bad_priv,
+                                SB_SW_CURVE_P256, SB_DATA_ENDIAN_BIG),
+        SB_ERROR_PRIVATE_KEY_INVALID);
+    SB_TEST_ASSERT_ERROR(
+        sb_sw_valid_private_key(&ct, &bad_priv,
+                                SB_SW_CURVE_SECP256K1, SB_DATA_ENDIAN_LITTLE),
+        SB_ERROR_PRIVATE_KEY_INVALID);
+    SB_TEST_ASSERT_ERROR(
+        sb_sw_sign_message_digest(&ct, &d, &bad_priv, &TEST_MESSAGE, NULL,
+                                  SB_SW_CURVE_P256, SB_DATA_ENDIAN_BIG),
+        SB_ERROR_PRIVATE_KEY_INVALID);
+    SB_TEST_ASSERT_ERROR(
+        sb_sw_sign_message_digest(&ct, &d, &bad_priv, &TEST_MESSAGE, NULL,
+                                  SB_SW_CURVE_SECP256K1, SB_DATA_ENDIAN_LITTLE),
+        SB_ERROR_PRIVATE_KEY_INVALID);
+    SB_TEST_ASSERT_ERROR(
+        sb_sw_compute_public_key(&ct, &d, &bad_priv, NULL,
+                                 SB_SW_CURVE_P256, SB_DATA_ENDIAN_BIG),
+        SB_ERROR_PRIVATE_KEY_INVALID);
+    SB_TEST_ASSERT_ERROR(
+        sb_sw_compute_public_key(&ct, &d, &bad_priv, NULL,
+                                 SB_SW_CURVE_SECP256K1, SB_DATA_ENDIAN_LITTLE),
+        SB_ERROR_PRIVATE_KEY_INVALID);
+    SB_TEST_ASSERT_ERROR(
+        sb_sw_invert_private_key(&ct, &s, &bad_priv, NULL,
+                                 SB_SW_CURVE_P256, SB_DATA_ENDIAN_BIG),
+        SB_ERROR_PRIVATE_KEY_INVALID);
+    SB_TEST_ASSERT_ERROR(
+        sb_sw_invert_private_key(&ct, &s, &bad_priv, NULL,
+                                 SB_SW_CURVE_SECP256K1, SB_DATA_ENDIAN_LITTLE),
+        SB_ERROR_PRIVATE_KEY_INVALID);
+    SB_TEST_ASSERT_ERROR(
+        sb_sw_point_multiply(&ct, &d, &bad_priv, &TEST_PUB_1, NULL,
+                             SB_SW_CURVE_P256, SB_DATA_ENDIAN_BIG),
+        SB_ERROR_PRIVATE_KEY_INVALID);
+    // Using big-endian here because TEST_PUB_SECP256K1 is defined in big-endian
+    SB_TEST_ASSERT_ERROR(
+        sb_sw_point_multiply(&ct, &d, &bad_priv, &TEST_PUB_SECP256K1, NULL,
+                             SB_SW_CURVE_SECP256K1, SB_DATA_ENDIAN_BIG),
+        SB_ERROR_PRIVATE_KEY_INVALID);
+    SB_TEST_ASSERT_ERROR(
+        sb_sw_composite_sign_wrap_message_digest(
+            &ct, &s, &TEST_MESSAGE, &bad_priv, NULL,
+            SB_SW_CURVE_P256, SB_DATA_ENDIAN_BIG),
+        SB_ERROR_PRIVATE_KEY_INVALID);
+    SB_TEST_ASSERT_ERROR(
+        sb_sw_composite_sign_wrap_message_digest(
+            &ct, &s, &TEST_MESSAGE, &bad_priv, NULL,
+            SB_SW_CURVE_SECP256K1, SB_DATA_ENDIAN_LITTLE),
+        SB_ERROR_PRIVATE_KEY_INVALID);
+    SB_TEST_ASSERT_ERROR(
+        sb_sw_composite_sign_unwrap_signature(&ct, &d, &TEST_SIG, &bad_priv,
+                                              SB_SW_CURVE_P256,
+                                              SB_DATA_ENDIAN_BIG),
+        SB_ERROR_PRIVATE_KEY_INVALID);
+    SB_TEST_ASSERT_ERROR(
+        sb_sw_composite_sign_unwrap_signature(&ct, &d, &TEST_SIG, &bad_priv,
+                                              SB_SW_CURVE_SECP256K1,
+                                              SB_DATA_ENDIAN_LITTLE),
+        SB_ERROR_PRIVATE_KEY_INVALID);
+
+    return 1;
+}
+
 /// Randomized tests:
+
+// A randomized test of the composite key wrapping and unwrapping methods.
+static _Bool sb_test_composite_key_wrap(const sb_sw_curve_id_t c,
+                                 const sb_data_endian_t e)
+{
+    sb_sw_private_t sk, wk;
+    sb_sw_public_t vk, ck;
+    sb_sw_signature_t s, unwrapped;
+    sb_sw_context_t ct;
+    sb_sw_message_digest_t m, wrapped;
+    size_t i = 0;
+
+    sb_hmac_drbg_state_t drbg;
+    NULL_DRBG_INIT(&drbg);
+    do {
+        // Generate a keypair (vk, sk) and a wrapping key wk.
+        SB_TEST_ASSERT_SUCCESS(
+            sb_sw_generate_private_key(&ct, &sk, &drbg, c, e));
+        SB_TEST_ASSERT_SUCCESS(
+            sb_sw_generate_private_key(&ct, &wk, &drbg, c, e));
+        SB_TEST_ASSERT_SUCCESS(
+            sb_sw_compute_public_key(&ct, &vk, &sk, &drbg, c, e));
+
+        // Create some random message digest.
+        SB_TEST_ASSERT_SUCCESS(sb_hmac_drbg_generate_additional_dummy
+                                    (&drbg, m.bytes, sizeof(m.bytes)));
+        // Wrap the message digest and sign using sk.
+        SB_TEST_ASSERT_SUCCESS(sb_sw_composite_sign_wrap_message_digest
+                                    (&ct, &wrapped, &m, &wk, &drbg, c, e));
+
+        SB_TEST_ASSERT_SUCCESS(sb_sw_sign_message_digest
+                                    (&ct, &s, &sk, &wrapped, &drbg, c, e));
+        // Unwrap the signature and compute the composite key.
+        SB_TEST_ASSERT_SUCCESS(sb_sw_composite_sign_unwrap_signature
+                                    (&ct, &unwrapped, &s, &wk, c, e));
+
+        SB_TEST_ASSERT_SUCCESS(sb_sw_point_multiply
+                                    (&ct, &ck, &wk, &vk, &drbg, c, e));
+
+         // Verify the signature.
+        SB_TEST_ASSERT_SUCCESS(sb_sw_verify_signature
+                                    (&ct, &unwrapped, &ck, &m, &drbg, c, e));
+        // Reseed the DRBG for the next iteration.
+        SB_TEST_ASSERT_SUCCESS(
+            sb_hmac_drbg_reseed(&drbg, sk.bytes, sizeof(sk),
+                                          wk.bytes, sizeof(wk)));
+        i++;
+    } while (i < SB_TEST_RAND_COUNT);
+    return 1;
+}
+
+_Bool sb_test_composite_key_wrap_p256(void)
+{
+    return sb_test_composite_key_wrap
+            (SB_SW_CURVE_P256, SB_DATA_ENDIAN_BIG);
+}
+
+_Bool sb_test_composite_key_wrap_secp256k1(void)
+{
+    return sb_test_composite_key_wrap
+            (SB_SW_CURVE_SECP256K1, SB_DATA_ENDIAN_LITTLE);
+}
 
 // A randomized test of the Shamir's trick multiplication-addition routine.
 _Bool sb_test_sw_point_mult_add_rand(void)

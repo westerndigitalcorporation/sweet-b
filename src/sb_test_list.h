@@ -99,8 +99,11 @@ SB_DEFINE_TEST(pk_recovery_james);
 // computation.
 SB_DEFINE_TEST(candidates);
 SB_DEFINE_TEST(sw_early_errors);
+SB_DEFINE_TEST(sw_invalid_scalar);
 // Randomized tests for expected functionality.
 // Each takes a drbg and at each iteration generates a keypair to run tests.
+SB_DEFINE_TEST(composite_key_wrap_p256);
+SB_DEFINE_TEST(composite_key_wrap_secp256k1);
 SB_DEFINE_TEST(sw_point_mult_add_rand);
 SB_DEFINE_TEST(invert_iter);
 SB_DEFINE_TEST(invert_iter_secp256k1);

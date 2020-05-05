@@ -68,7 +68,7 @@
 
 #if SB_HMAC_DRBG_RESEED_INTERVAL > 0x1000000000000
 #error "SB_HMAC_DRBG_RESEED_INTERVAL too large; see SP 800-90A Rev. 1"
-#elif SB_HMAC_DRBG_RESEED_INTERVAL < 14
+#elif SB_HMAC_DRBG_RESEED_INTERVAL < 18
 // Sweet B unit tests depend on this
 // Note that Sweet B does NOT support prediction resistance! If you want the
 // equivalent, reseed the DRBG before every operation yourself.

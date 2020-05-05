@@ -1378,6 +1378,35 @@ sb_error_t sb_sw_hkdf_expand_private_key(sb_sw_context_t ctx[static const 1],
     SB_RETURN(err, ctx);
 }
 
+// Helper function for sb_sw_invert_private_key and
+// sb_sw_composite_sign_wrap_message_digest.
+// Performs a modular inversion of a field element stored in C_X1 using a
+// generated blinding factor stored in MULT_K in the montgomery domain and
+// stores the result in C_T6. Assumes that curve and field element have both
+// already been validated.
+static void sb_sw_invert_field_element
+                 (sb_sw_context_t ctx[static const 1],
+                  const sb_sw_curve_t* s)
+{
+    /* Perform the scalar inversion. */
+
+    // X1 = blinding factor * R
+    sb_fe_mont_convert(C_X1(ctx), MULT_K(ctx), s->n);
+
+    // Y1 = scalar * R
+    sb_fe_mont_convert(C_Y1(ctx), MULT_Z(ctx), s->n);
+
+    // T5 = blinding factor * scalar * R
+    sb_fe_mont_mult(C_T5(ctx), C_X1(ctx), C_Y1(ctx), s->n);
+
+    // T5 = (blinding factor * scalar)^-1 * R
+    sb_fe_mod_inv_r(C_T5(ctx), C_T6(ctx), C_T7(ctx), s->n);
+
+    // T6 = (blinding factor * scalar)^-1 * blinding factor * R
+    //    = scalar^-1 * R
+    sb_fe_mont_mult(C_T6(ctx), C_T5(ctx), C_X1(ctx), s->n);
+}
+
 sb_error_t sb_sw_invert_private_key(sb_sw_context_t ctx[static const 1],
                                     sb_sw_private_t output[static const 1],
                                     const sb_sw_private_t private[static const 1],
@@ -1447,23 +1476,8 @@ sb_error_t sb_sw_invert_private_key(sb_sw_context_t ctx[static const 1],
      * generation failed. */
     SB_RETURN_ERRORS(err, ctx);
 
-    /* Perform the scalar inversion. */
-
-    // X1 = blinding factor * R
-    sb_fe_mont_convert(C_X1(ctx), MULT_K(ctx), s->n);
-
-    // Y1 = scalar * R
-    sb_fe_mont_convert(C_Y1(ctx), MULT_Z(ctx), s->n);
-
-    // T5 = blinding factor * scalar * R
-    sb_fe_mont_mult(C_T5(ctx), C_X1(ctx), C_Y1(ctx), s->n);
-
-    // T5 = (blinding factor * scalar)^-1 * R
-    sb_fe_mod_inv_r(C_T5(ctx), C_T6(ctx), C_T7(ctx), s->n);
-
-    // T6 = (blinding factor * scalar)^-1 * blinding factor * R
-    //    = scalar^-1 * R
-    sb_fe_mont_mult(C_T6(ctx), C_T5(ctx), C_X1(ctx), s->n);
+    // T6 = scalar^-1 * R
+    sb_sw_invert_field_element(ctx, s);
 
     // T5 = scalar^-1
     sb_fe_mont_reduce(C_T5(ctx), C_T6(ctx), s->n);
@@ -2311,6 +2325,150 @@ sb_error_t sb_sw_sign_message_sha256
 
     return sb_sw_sign_message_digest(ctx, signature, private, digest,
                                      provided_drbg, curve, e);
+}
+
+sb_error_t sb_sw_composite_sign_wrap_message_digest
+    (sb_sw_context_t ctx[static const 1],
+     sb_sw_message_digest_t wrapped[static const 1],
+     const sb_sw_message_digest_t message[static const 1],
+     const sb_sw_private_t private[static const 1],
+     sb_hmac_drbg_state_t* const drbg,
+     sb_sw_curve_id_t const curve,
+     sb_data_endian_t const e)
+{
+    sb_error_t err = SB_SUCCESS;
+
+    // Nullify the context and output.
+    SB_NULLIFY(ctx);
+    SB_NULLIFY(wrapped);
+
+    const sb_sw_curve_t* s = NULL;
+    err |= sb_sw_curve_from_id(&s, curve);
+
+    /* Scalar inversion blinding factor generation is done in one generate
+     * call to the DRBG. */
+    if (drbg != NULL) {
+        err |= sb_hmac_drbg_reseed_required(drbg, 1);
+    }
+
+    // Bail out early if the curve is invalid or the DRBG needs to be reseeded.
+    SB_RETURN_ERRORS(err, ctx);
+
+    /* Generate a random scalar to use as part of blinding. */
+    if (drbg != NULL) {
+        /* The private key is supplied as additional input to the DRBG in
+         * order to mitigate DRBG failure. */
+
+        // Supply the private scalar and the message as drbg's additional input.
+        const sb_byte_t* const add[SB_HMAC_DRBG_ADD_VECTOR_LEN] = {
+            private->bytes, message->bytes
+        };
+
+        const size_t add_len[SB_HMAC_DRBG_ADD_VECTOR_LEN] = {
+            SB_ELEM_BYTES, SB_SHA256_SIZE
+        };
+
+        err |= sb_hmac_drbg_generate_additional_vec(drbg,
+                                                    ctx->param_gen.buf,
+                                                    SB_SW_FIPS186_4_CANDIDATES *
+                                                    SB_ELEM_BYTES,
+                                                    add, add_len);
+        SB_ASSERT(!err, "Scalar blinding factor generation should never fail.");
+    } else {
+        // Update the hkdf with the private scalar and the message.
+        sb_hkdf_extract_init(&ctx->param_gen.hkdf, NULL, 0);
+        sb_hkdf_extract_update(&ctx->param_gen.hkdf,
+                               private->bytes, SB_ELEM_BYTES);
+        sb_hkdf_extract_update(&ctx->param_gen.hkdf,
+                               message->bytes, SB_SHA256_SIZE);
+        sb_hkdf_extract_finish(&ctx->param_gen.hkdf);
+
+        const sb_byte_t label[] = "sb_sw_composite_sign_wrap_message_digest";
+        sb_hkdf_expand(&ctx->param_gen.hkdf,
+                       label, sizeof(label),
+                       ctx->param_gen.buf,
+                       SB_SW_FIPS186_4_CANDIDATES * SB_ELEM_BYTES);
+    }
+
+    /* Test and select a candidate from the filled buffer. */
+    err |= sb_sw_k_from_buf(ctx, 1, s, e);
+
+    /* At this point a possibly-invalid candidate is in MULT_K(ctx). */
+    /* Check the supplied private key now. */
+
+    sb_fe_from_bytes(MULT_Z(ctx), private->bytes, e);
+    err |= SB_ERROR_IF(PRIVATE_KEY_INVALID,
+                       !sb_sw_scalar_validate(MULT_Z(ctx), s));
+
+    /* Bail out if the private key is invalid or if blinding factor
+     * generation failed. */
+    SB_RETURN_ERRORS(err, ctx);
+
+    // T6 = scalar^-1 * R
+    sb_sw_invert_field_element(ctx, s);
+
+    // T5 = message_digest
+    sb_fe_from_bytes(C_T5(ctx), message->bytes, e);
+    sb_fe_mod_reduce(C_T5(ctx), s->n);
+
+    // T7 = (scalar^-1 * R) * message_digest * R^-1
+    //    = scalar^-1 * message_digest
+    sb_fe_mont_mult(C_T7(ctx), C_T6(ctx), C_T5(ctx), s->n);
+
+    sb_fe_to_bytes(wrapped->bytes, C_T7(ctx), e);
+
+    SB_RETURN(err, ctx);
+}
+
+sb_error_t sb_sw_composite_sign_unwrap_signature
+    (sb_sw_context_t ctx[static const 1],
+     sb_sw_signature_t unwrapped[static const 1],
+     const sb_sw_signature_t signature[static const 1],
+     const sb_sw_private_t private[static const 1],
+     sb_sw_curve_id_t const curve,
+     sb_data_endian_t const e)
+{
+    sb_error_t err = SB_SUCCESS;
+
+    // Nullify the context
+    SB_NULLIFY(ctx);
+    SB_NULLIFY(unwrapped);
+
+    const sb_sw_curve_t* s = NULL;
+    err |= sb_sw_curve_from_id(&s, curve);
+
+    // Return errors if curve is invalid
+    SB_RETURN_ERRORS(err, ctx);
+
+    // Convert the private scalar to a field element and validate.
+    sb_fe_from_bytes(MULT_Z(ctx), private->bytes, e);
+    err |= SB_ERROR_IF(PRIVATE_KEY_INVALID,
+                       !sb_sw_scalar_validate(MULT_Z(ctx), s));
+
+    // Convert the signature to field elements and validate.
+    sb_fe_from_bytes(VERIFY_QR(ctx), signature->bytes, e);
+    sb_fe_from_bytes(VERIFY_QS(ctx), signature->bytes + SB_ELEM_BYTES, e);
+    sb_fe_mod_reduce(C_T6(ctx), s->n);
+
+    err |= SB_ERROR_IF(SIGNATURE_INVALID,
+                       !sb_sw_scalar_validate(VERIFY_QR(ctx), s));
+    err |= SB_ERROR_IF(SIGNATURE_INVALID,
+                       !sb_sw_scalar_validate(VERIFY_QS(ctx), s));
+
+    // Return with errors if private key or signature did not validate.
+    SB_RETURN_ERRORS(err, ctx);
+
+    // Y1 = private * R
+    sb_fe_mont_convert(C_Y1(ctx), MULT_Z(ctx), s->n);
+
+    // T5 = s * private
+    sb_fe_mont_mult(C_T5(ctx), C_Y1(ctx), VERIFY_QS(ctx), s->n);
+
+    // Output (r, s)
+    sb_fe_to_bytes(unwrapped->bytes, VERIFY_QR(ctx), e);
+    sb_fe_to_bytes(unwrapped->bytes + SB_ELEM_BYTES, C_T5(ctx), e);
+
+    SB_RETURN(err, ctx);
 }
 
 sb_error_t sb_sw_verify_signature_start
