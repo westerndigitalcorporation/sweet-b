@@ -42,7 +42,7 @@
 ![Sweet B Logo](sweet-b.svg)
 
 Sweet B is a library which implements public key elliptic curve cryptography
-(ECC) using the NIST P-256 and SECG secp256k1curves. Sweet B is:
+(ECC) using the NIST P-256 and SECG secp256k1 curves. Sweet B is:
 
 * *Safe:* known attack vectors have been accounted for, design decisions have
   been documented, and the API has been designed to eliminate the possibility of
@@ -149,7 +149,7 @@ mitigate power-based side channel attacks.
 
 [`sb_sw_lib.h`](src/sb_sw_lib.h) is the main entry point for ECC operations on
 short Weierstrass curves (P-256 and secp256k1). For hashing and random number
-generation, see[`sb_sha256.h`](src/sb_sha256.h) and
+generation, see [`sb_sha256.h`](src/sb_sha256.h) and
 [`sb_hmac_drbg.h`](src/sb_hmac_drbg.h). Each file contains a number of test 
 cases; if you compile Sweet B with `-DSB_TEST`, you can run them using the 
 main routine in [`sb_test.c`](src/sb_test.c).
