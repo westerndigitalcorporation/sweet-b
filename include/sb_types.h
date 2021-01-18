@@ -62,7 +62,7 @@
  * set in terms of bytes. The default value is 4, but you should set this as
  * appropriate for the resources of your processor. For instance, if your
  * processor features a multiplier that can produce a 64-bit result from two
- * 32-bit operands, then set \ref SB_WORD_SIZE to 4. */
+ * 32-bit operands, then set ::SB_WORD_SIZE to 4. */
 #define SB_WORD_SIZE 4
 #endif
 
@@ -77,7 +77,7 @@ typedef uint8_t sb_byte_t;
 typedef struct sb_single_t {
     /** An array 32 bytes making up the 256-bit value. */
     sb_byte_t bytes[SB_ELEM_BYTES];
-} sb_single_t;
+} sb_single_t; /**< Convenience typedef */
 
 /** @struct sb_double_t
  *  @brief Two 256-bit values in one wrapper.
@@ -85,7 +85,7 @@ typedef struct sb_single_t {
 typedef struct sb_double_t {
     /** An array of 64 bytes making up two 256-bit values. */
     sb_byte_t bytes[SB_ELEM_BYTES * 2];
-} sb_double_t;
+} sb_double_t; /**< Convenience typedef */
 
 /** @enum sb_data_endian_value_t
  *  @brief Used to indicate whether input data is in big-endian or
@@ -94,20 +94,19 @@ typedef struct sb_double_t {
 typedef enum sb_data_endian_value_t {
     SB_DATA_ENDIAN_LITTLE = 0, ///< Little endian data.
     SB_DATA_ENDIAN_BIG         ///< Big endian data.
-} sb_data_endian_value_t;
+} sb_data_endian_value_t; /**< Convenience typedef */
 
-/** @brief Wrapper 32-bit integer type for \ref sb_data_endian_value_t, used for
+/** @brief Wrapper 32-bit integer type for ::sb_data_endian_value_t, used for
  *  ABI compatibility purposes. */
 typedef uint32_t sb_data_endian_t;
 
 /**
  * @brief Error return type used in Sweet B.
  * Functions which return errors in Sweet B may return a bitwise-or of multiple
- * error values, defined in \ref sb_error_value_t. For example, when
+ * error values, defined in ::sb_error_value_t. For example, when
  * initializing a HMAC-DRBG instance, if the supplied entropy input is too
  * small and the supplied personalization string is too large, the return
- * value will be \ref SB_ERROR_INSUFFICIENT_ENTROPY | \ref
- * SB_ERROR_INPUT_TOO_LARGE.
+ * value will be ::SB_ERROR_INSUFFICIENT_ENTROPY | ::SB_ERROR_INPUT_TOO_LARGE.
 */
 
 typedef uint32_t sb_error_t;
@@ -164,6 +163,16 @@ typedef enum sb_error_value_t {
 /* Non-public definitions used in private context structures follow. These
  * are defined in public headers for size and alignment purposes only. */
 
+/** @privatesection */
+
+/** @typedef sb_word_t
+    @brief A word of size ::SB_WORD_SIZE bytes, used for underlying
+    field element arithmetic. */
+
+/** @def SB_FE_WORDS
+    @brief The number of ::SB_WORD_SIZE sized words needed to represent
+    a field element of size ::SB_ELEM_BYTES */
+
 #if SB_WORD_SIZE == 8
 
 typedef uint64_t sb_word_t;
@@ -188,28 +197,31 @@ typedef uint8_t sb_word_t;
 #error "SB_WORD_SIZE is invalid"
 #endif
 
-/* This structure is used in opaque curve operation context structures. */
+/** @struct sb_fe_t
+    @brief  Used to represent a field element as a set of ::SB_FE_WORDS
+    words of ::SB_WORD_SIZE length. */
 typedef struct sb_fe_t {
-    sb_word_t words[SB_FE_WORDS];
+    sb_word_t words[SB_FE_WORDS]; ///< Words which represent the field element
 #if defined(SB_FE_VERIFY_QR) && SB_FE_VERIFY_QR != 0
     _Bool qr, qr_always;
     const struct sb_prime_field_t* p;
 #endif
-} sb_fe_t;
+} sb_fe_t; /**< Convenience typedef */
 
 #if !defined(SB_FE_VERIFY_QR) || SB_FE_VERIFY_QR == 0
 _Static_assert(sizeof(sb_fe_t) == SB_ELEM_BYTES, "sizeof(sb_fe_t) must be "
                                                  "SB_ELEM_BYTES");
 #endif
 
-/* This structure is used in opaque curve operation context structures. */
+/** @struct sb_fe_pair_t
+ *  @brief  Used to represent a point on a curve as X, Y coordinates. */
 typedef struct sb_fe_pair_t {
-    sb_fe_t x, y;
-} sb_fe_pair_t;
+    sb_fe_t x, ///< The X coordinate of the point.
+            y; ///< The Y coordinate of the point.
+} sb_fe_pair_t; /**< Convenience typedef */
 
-/* This is used for internal sizes, even if the platform native size_t is
- * 64 bits */
-
+/** This is used for internal sizes, even if the platform native size_t is
+ *  64 bits */
 typedef uint32_t sb_size_t;
 
 #endif

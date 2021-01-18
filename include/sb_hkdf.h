@@ -48,11 +48,11 @@
 /** @struct sb_hkdf_state_t
  *  @brief Opaque state structure. You are responsible for allocating this
  *  and passing it in to HKDF operations. */
-
 typedef struct sb_hkdf_state_t {
-    sb_hmac_sha256_state_t hmac;
-    sb_byte_t output[SB_SHA256_SIZE];
-} sb_hkdf_state_t;
+    /** @privatesection */
+    sb_hmac_sha256_state_t hmac; ///< HMAC state
+    sb_byte_t output[SB_SHA256_SIZE]; ///< Intermediate HMAC output buffer
+} sb_hkdf_state_t; /**< Convenience typedef */
 
 /**
  * Extract a pseudo-random key from the given \p salt and \p input key material.
@@ -64,6 +64,7 @@ typedef struct sb_hkdf_state_t {
  * @param [in]  input HKDF input key material. Must not alias \p hkdf or
  * \p salt.
  * @param [in]  input_len HKDF input key material length, in bytes.
+ * @memberof sb_hkdf_state_t
  */
 extern void sb_hkdf_extract(sb_hkdf_state_t hkdf[static restrict 1],
                             const sb_byte_t* restrict salt,
@@ -73,13 +74,13 @@ extern void sb_hkdf_extract(sb_hkdf_state_t hkdf[static restrict 1],
 
 /**
  * Begin extracting a pseudo-random key using the given \p salt. Must be
- * followed by calls to \ref sb_hkdf_extract_update and \ref
- * sb_hkdf_extract_finish.
+ * followed by calls to ::sb_hkdf_extract_update and ::sb_hkdf_extract_finish.
  *
  * @param [out] hkdf HKDF state. Must be allocated by the caller.
  * @param [in]  salt HKDF salt. Must not alias \p hkdf. May be NULL iff
  * \p salt_len is zero.
  * @param [in]  salt_len HKDF salt length, in bytes.
+ * @memberof sb_hkdf_state_t
  */
 extern void sb_hkdf_extract_init(sb_hkdf_state_t hkdf[static restrict 1],
                                  const sb_byte_t* restrict salt,
@@ -87,24 +88,26 @@ extern void sb_hkdf_extract_init(sb_hkdf_state_t hkdf[static restrict 1],
 
 /**
  * Supply input to the HKDF extraction process begun by a previous call to
- * \ref sb_hkdf_extract_init. Must be followed by further calls to \ref
- * sb_hkdf_extract_update and a final call to \ref sb_hkdf_extract_finish.
+ * ::sb_hkdf_extract_init. Must be followed by further calls to
+ * ::sb_hkdf_extract_update and a final call to ::sb_hkdf_extract_finish.
  *
  * @param [in,out] hkdf HKDF state. Must be allocated by the caller.
  * @param [in]  input HKDF input key material. Must not alias \p hkdf.
  * @param [in]  input_len HKDF input key material length, in bytes.
+ * @memberof sb_hkdf_state_t
  */
 extern void sb_hkdf_extract_update(sb_hkdf_state_t hkdf[static restrict 1],
                                    const sb_byte_t* restrict input,
                                    size_t input_len);
 
 /**
- * Finish the HKDF extraction process begun by a previous call to \ref
- * sb_hkdf_extract_init. Must only be followed by calls to \ref
- * sb_hkdf_expand, or a call to \ref sb_hkdf_extract or \ref
- * sb_hkdf_extract_init to reset the HKDF state.
+ * Finish the HKDF extraction process begun by a previous call to
+ * ::sb_hkdf_extract_init. Must only be followed by calls to
+ * ::sb_hkdf_expand, or a call to ::sb_hkdf_extract or
+ * ::sb_hkdf_extract_init to reset the HKDF state.
  *
  * @param [in,out] hkdf HKDF state. Must be allocated by the caller.
+ * @memberof sb_hkdf_state_t
  */
 extern void sb_hkdf_extract_finish(sb_hkdf_state_t hkdf[static restrict 1]);
 
@@ -115,6 +118,7 @@ extern void sb_hkdf_extract_finish(sb_hkdf_state_t hkdf[static restrict 1]);
  * @param [out] hkdf HKDF state. Must be allocated by the caller.
  * @param [in]  input KDF input key material. Must not alias \p hkdf.
  * @param [in]  input_len KDF input key material length, in bytes.
+ * @memberof sb_hkdf_state_t
  */
 extern void sb_hkdf_kdf_init(sb_hkdf_state_t hkdf[static restrict 1],
                              const sb_byte_t* restrict input,
@@ -126,7 +130,7 @@ extern void sb_hkdf_kdf_init(sb_hkdf_state_t hkdf[static restrict 1],
  * when using different info strings to generate keys for different purposes).
  *
  * @param [in,out] hkdf HKDF state. Must be allocated by caller and have been
- * previously initialized via \ref sb_hkdf_extract.
+ * previously initialized via ::sb_hkdf_extract.
  * @param [in]     info Optional context-specific information. May be NULL
  * iff \p info_len is zero. Must not alias \p hkdf or \p output.
  * @param [in]     info_len Length of optional context-specific information,
@@ -134,6 +138,7 @@ extern void sb_hkdf_kdf_init(sb_hkdf_state_t hkdf[static restrict 1],
  * @param [out]    output HKDF output key material. Must not alias \p hkdf or
  * \p info.
  * @param [in]     output_len HKDF output key material length, in bytes.
+ * @memberof sb_hkdf_state_t
  */
 extern void sb_hkdf_expand(sb_hkdf_state_t hkdf[static restrict 1],
                            const sb_byte_t* restrict info,

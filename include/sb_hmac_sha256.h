@@ -48,17 +48,19 @@
  *  @brief Opaque state structure. You are responsible for allocating this
  *  and passing it in to HMAC-SHA256 operations. */
 typedef struct sb_hmac_sha256_state_t {
-    sb_sha256_state_t sha;
-    sb_byte_t key[SB_SHA256_BLOCK_SIZE];
-} sb_hmac_sha256_state_t;
+    /** @privatesection */
+    sb_sha256_state_t sha; ///< Internal hash state
+    sb_byte_t key[SB_SHA256_BLOCK_SIZE]; ///< HMAC key
+} sb_hmac_sha256_state_t; /**< Convenience typedef */
 
 /**
  * Initialize a HMAC-SHA256 state object. Must be called before
- * \ref sb_hmac_sha256_update is called on input bytes.
+ * ::sb_hmac_sha256_update is called on input bytes.
  *
  * @param [out] hmac HMAC-SHA256 state. Must be allocated by the caller.
  * @param [in]  key HMAC-SHA256 key. Must not alias \p hmac.
  * @param [in]  keylen HMAC-SHA256 key length, in bytes.
+ * @memberof sb_hmac_sha256_state_t
  */
 extern void sb_hmac_sha256_init(sb_hmac_sha256_state_t hmac[static restrict 1],
                                 const sb_byte_t* restrict key,
@@ -69,7 +71,8 @@ extern void sb_hmac_sha256_init(sb_hmac_sha256_state_t hmac[static restrict 1],
  * input key.
  *
  * @param [in,out] hmac HMAC-SHA256 state. Must be allocated by the caller.
- * Must previously have been initialized with \ref sb_hmac_sha256_init.
+ * Must previously have been initialized with ::sb_hmac_sha256_init.
+ * @memberof sb_hmac_sha256_state_t
  */
 extern void sb_hmac_sha256_reinit(sb_hmac_sha256_state_t hmac[static 1]);
 
@@ -79,10 +82,11 @@ extern void sb_hmac_sha256_reinit(sb_hmac_sha256_state_t hmac[static 1]);
  * are available in a single input buffer.
  *
  * @param [in,out] hmac HMAC-SHA256 state. Must be allocated by the caller and
- * have been previously initialized via \ref sb_hmac_sha256_init.
+ * have been previously initialized via ::sb_hmac_sha256_init.
  * @param [in] input Input bytes of length \p len. Must not alias the HMAC
  * state. May be NULL if \p len is zero.
  * @param [in] len Length of \p input bytes.
+ * @memberof sb_hmac_sha256_state_t
  */
 extern void
 sb_hmac_sha256_update(sb_hmac_sha256_state_t hmac[static restrict 1],
@@ -91,16 +95,17 @@ sb_hmac_sha256_update(sb_hmac_sha256_state_t hmac[static restrict 1],
 
 /**
  * Calculate the HMAC-SHA256 of the bytes that have been previously provided
- * in calls to \ref sb_hmac_sha256_update, using the key provided in the
- * original call to \ref sb_hmac_sha256_init. The state may be reused only
- * after calling \ref sb_hmac_sha256_init or \ref sb_hmac_sha256_reinit to
+ * in calls to ::sb_hmac_sha256_update, using the key provided in the
+ * original call to ::sb_hmac_sha256_init. The state may be reused only
+ * after calling ::sb_hmac_sha256_init or ::sb_hmac_sha256_reinit to
  * initialize or reinitialize the state.
  *
  * @param [in,out] hmac HMAC-SHA256 state. Must be allocated by the caller and
- * have been previously initialized via \ref sb_hmac_sha256_init. May have been
- * updated by one or more calls to \ref sb_hmac_sha256_update.
- * @param [out] output Resulting HMAC-SHA256 value, in the form of \ref
- * SB_SHA256_SIZE bytes.
+ * have been previously initialized via ::sb_hmac_sha256_init. May have been
+ * updated by one or more calls to ::sb_hmac_sha256_update.
+ * @param [out] output Resulting HMAC-SHA256 value, in the form of
+ * ::SB_SHA256_SIZE bytes.
+ * @memberof sb_hmac_sha256_state_t
  */
 extern void
 sb_hmac_sha256_finish(sb_hmac_sha256_state_t hmac[static restrict 1],
@@ -110,13 +115,14 @@ sb_hmac_sha256_finish(sb_hmac_sha256_state_t hmac[static restrict 1],
  * Compute the HMAC-SHA256 of the supplied input using the supplied key.
  *
  * @param [out] hmac HMAC-SHA256 state. Must be allocated by the caller.
- * @param [out] output Resulting HMAC-SHA256 value, in the form of \ref
- * SB_SHA256_SIZE bytes.
+ * @param [out] output Resulting HMAC-SHA256 value, in the form of
+ * ::SB_SHA256_SIZE bytes.
  * @param [in]  key HMAC-SHA256 key. Must not alias \p hmac.
  * @param [in]  keylen HMAC-SHA256 key length, in bytes.
  * @param [in] input Input bytes of length \p len. Must not alias the HMAC
  * state. May be NULL if \p len is zero.
  * @param [in] input_len Length of \p input bytes.
+ * @memberof sb_hmac_sha256_state_t
  */
 extern void sb_hmac_sha256(sb_hmac_sha256_state_t hmac[static restrict 1],
                            sb_byte_t output[static restrict SB_SHA256_SIZE],
