@@ -47,7 +47,7 @@
 #include <stddef.h>
 #include "sb_types.h"
 
-/** @name Field element implement
+/** @name Field element implementation
   *
   * The following types implement arithmetic over the underlying prime field,
   * i.e. Z//p for some prime.
@@ -90,7 +90,7 @@ typedef sb_size_t sb_bitcount_t;
 
 /** @typedef sb_word_t
  *  @brief An unsigned integer used for primitive arithmetic operations, of the
- *  width defined by \ref SB_WORD_SIZE .
+ *  width defined by ::SB_WORD_SIZE .
  */
 
 /** @var SB_FE_WORDS
@@ -98,8 +98,8 @@ typedef sb_size_t sb_bitcount_t;
  */
 
 /** @struct sb_fe_t
- *  @brief A field element is a 256-bit natural represented as \ref SB_FE_WORDS
- *  words, each of \ref SB_WORD_SIZE bytes. Field elements may be reduced or
+ *  @brief A field element is a 256-bit natural represented as ::SB_FE_WORDS
+ *  words, each of ::SB_WORD_SIZE bytes. Field elements may be reduced or
  *  unreduced; modular operations guarantee the reduction of their outputs,
  *  but primitive arithmetic operations operate on unreduced values.
  */
@@ -112,36 +112,36 @@ typedef sb_size_t sb_bitcount_t;
 /* The following definitions differ depending on the value of SB_WORD_SIZE. */
 
 /** @var sb_dword_t
- *  @brief An unsigned integer type double the width of a \ref sb_word_t.
+ *  @brief An unsigned integer type double the width of a ::sb_word_t.
  *  Used to represent the result of certain arithmetic operations.
  */
 
-/** @fn SB_WORD_C(v)
- *  @brief Like \c UINTnn_C, but for an integer constant the size of a \ref
- *  sb_word_t.
+/** @def SB_WORD_C
+ *  @brief Like \c UINTnn_C, but for an integer constant the size of a
+ *  ::sb_word_t.
  */
 
-/** @var SB_WORD_MAX
- *  @brief Like \c UINTnn_MAX, but for an integer the size of a \ref sb_word_t.
+/** @def SB_WORD_MAX
+ *  @brief Like \c UINTnn_MAX, but for an integer the size of a ::sb_word_t.
  */
 
-/** @var SB_WORD_BITS
- *  @brief The number of bits in a \ref sb_word_t.
+/** @def SB_WORD_BITS
+ *  @brief The number of bits in a ::sb_word_t.
  */
 
-/** @var SB_WORD_BITS_SHIFT
- *  @brief Log base 2 of \ref SB_WORD_BITS.
+/** @def SB_WORD_BITS_SHIFT
+ *  @brief Log base 2 of ::SB_WORD_BITS.
  */
 
-/** @var SB_WORD_BITS_MASK
- *  @brief Used as a mask to determine which in word a given bit of a \ref
- *  sb_fe_t resides.
+/** @def SB_WORD_BITS_MASK
+ *  @brief Used as a mask to determine which in word a given bit of a
+ *  ::sb_fe_t resides.
  */
 
-/** @fn SB_WORD_EXPAND(d)
+/** @def SB_WORD_EXPAND
  *  @brief Given an unsigned 64-bit integer constant, expand to a comma
  *  separated list of C constant values containing the same value in multiple
- *  \ref sb_word_t values. Used for \ref SB_FE_CONST .
+ *  ::sb_word_t values. Used for ::SB_FE_CONST .
  */
 
 #if SB_WORD_SIZE == 8
@@ -320,8 +320,8 @@ typedef sb_word_t sb_uword_t;
 /** @brief Helper macro for a constant field element value.
  *
  *  Given the 64-bit unsigned constants \p w3, \p w2, \p w1, \p w0,
- *  expands to a \ref sb_fe_t initializer appropriate for the size of \ref
- *  sb_word_t using the \ref SB_WORD_EXPAND macro. For example, \c
+ *  expands to a ::sb_fe_t initializer appropriate for the size of
+ *  ::sb_word_t using the ::SB_WORD_EXPAND macro. For example, \c
  *  SB_FE_CONST(0, 0, 0, 1) is the 256-bit representation of the value 1.
  */
 #define SB_FE_CONST(w3, w2, w1, w0) \
@@ -330,7 +330,7 @@ typedef sb_word_t sb_uword_t;
 
 
 /** @var SB_FE_VERIFY_QR
- *  @brief Quasi-reduction runtime verification. If \ref SB_FE_VERIFY_QR is
+ *  @brief Quasi-reduction runtime verification. If ::SB_FE_VERIFY_QR is
  *  defined as non-zero, then field elements track which prime they have been
  *  quasi-reduced to (if any), and modular operations enforce this as a
  *  precondition. Note that this does not verify the values are within range;
@@ -347,16 +347,16 @@ typedef sb_word_t sb_uword_t;
 #error "SB_FE_VERIFY_QR is invalid outside of unit tests"
 #endif
 
-/** @fn SB_FE_CONST_QR(w3, w2, w1, w0, prime)
- *  @brief Helper macro for a constant field element value. Like \ref
- *  SB_FE_CONST, but defines a constant that is quasi-reduced with respect to
+/** @def SB_FE_CONST_QR(w3, w2, w1, w0, prime)
+ *  @brief Helper macro for a constant field element value. Like
+ *  ::SB_FE_CONST, but defines a constant that is quasi-reduced with respect to
  *  some prime field.
  */
 
-/** @fn SB_FE_CONST_ALWAYS_QR(w3, w2, w1, w0)
- *  @brief Helper macro for a constant field element value. Like \ref
- *  SB_FE_CONST, but asserts that the value is always quasi-reduced with
- *  respect to any prime. Used for small constants (namely, \ref SB_FE_ONE).
+/** @def SB_FE_CONST_ALWAYS_QR(w3, w2, w1, w0)
+ *  @brief Helper macro for a constant field element value. Like
+ *  ::SB_FE_CONST, but asserts that the value is always quasi-reduced with
+ *  respect to any prime. Used for small constants (namely, ::SB_FE_ONE).
  */
 
 #if SB_FE_VERIFY_QR != 0
@@ -376,30 +376,31 @@ typedef sb_word_t sb_uword_t;
 /** @brief Return the given word of a field element. */
 #define SB_FE_WORD(fe, i) ((fe)->words[i])
 
-/** @brief Return the given word of a field element as a \ref sb_uword_t. */
+/** @brief Return the given word of a field element as a ::sb_uword_t. */
 #define SB_FE_UWORD(fe, i) ((sb_uword_t) SB_FE_WORD(fe, i))
 
-/** @brief The value 1, as a field element. */
+/** @var SB_FE_ONE
+  * @brief The value 1, as a field element. */
 static const sb_fe_t SB_FE_ONE = SB_FE_CONST_ALWAYS_QR(0, 0, 0, 1);
 
 /** @brief The value 0, as a field element. */
 static const sb_fe_t SB_FE_ZERO = SB_FE_CONST(0, 0, 0, 0);
 
-/** @fn SB_FE_UNQR(fe)
+/** @def SB_FE_UNQR(fe)
  *  @brief Establishes that the field element is no longer quasi-reduced. Used
- *  for quasi-reduction invariant checking with \ref SB_FE_VERIFY_QR.
+ *  for quasi-reduction invariant checking with ::SB_FE_VERIFY_QR.
  */
 
-/** @fn SB_FE_QR(fe, prime)
+/** @def SB_FE_QR(fe, prime)
  *  @brief Establishes that the field element is now quasi-reduced with respect
  *  to some specific prime. Used for quasi-reduction invariant checking with
- *  \ref SB_FE_VERIFY_QR.
+ *  ::SB_FE_VERIFY_QR.
  */
 
-/** @fn SB_FE_ASSERT_QR(fe, prime)
+/** @def SB_FE_ASSERT_QR(fe, prime)
  *  @brief Asserts that the field element is quasi-reduced with respect to
  *  the given prime. This can be satisfied in one of three ways: the element
- *  is always quasi-reduced (as in \ref SB_FE_ONE), the element is
+ *  is always quasi-reduced (as in ::SB_FE_ONE), the element is
  *  quasi-reduced with respect to the given prime, or the element is
  *  quasi-reduced with respect to a prime which is less than the given prime
  *  (which is used in short Weierstrass signature verification).
@@ -428,23 +429,23 @@ static const sb_fe_t SB_FE_ZERO = SB_FE_CONST(0, 0, 0, 0);
 #endif
 
 /** @var SB_FE_ASM
- *  @brief If \ref SB_FE_ASM is defined as non-zero, then assembly support
+ *  @brief If ::SB_FE_ASM is defined as non-zero, then assembly support
  *  for Sweet B is assumed to be supplied.
  *
  *  The following routines will not be defined by \c sb_fe.c and must be
  *  supplied by assembly:
- *    - \ref sb_fe_equal
- *    - \ref sb_fe_test_bit
- *    - \ref sb_fe_add
- *    - \ref sb_fe_sub_borrow
- *    - \ref sb_fe_lt
- *    - \ref sb_fe_cond_sub_p
- *    - \ref sb_fe_cond_add_p_1
- *    - \ref sb_fe_ctswap
- *    - \ref sb_fe_mont_mult
+ *    - ::sb_fe_equal
+ *    - ::sb_fe_test_bit
+ *    - ::sb_fe_add
+ *    - ::sb_fe_sub_borrow
+ *    - ::sb_fe_lt
+ *    - ::sb_fe_cond_sub_p
+ *    - ::sb_fe_cond_add_p_1
+ *    - ::sb_fe_ctswap
+ *    - ::sb_fe_mont_mult
  *
- *  Currently, assembly support implies that \ref SB_WORD_SIZE is equal to 4.
- *  Additionally, \ref SB_FE_VERIFY_QR conflicts with layout assumptions made
+ *  Currently, assembly support implies that ::SB_WORD_SIZE is equal to 4.
+ *  Additionally, ::SB_FE_VERIFY_QR conflicts with layout assumptions made
  *  by the assembly code, and so must be disabled when assembly is enabled.
  */
 
@@ -462,9 +463,9 @@ static const sb_fe_t SB_FE_ZERO = SB_FE_CONST(0, 0, 0, 0);
 
 /** @brief The definition of a prime field.
  *
- * Sweet B uses Montgomery multiplication. As such, \ref
- * sb_prime_field_t::p_mp, \ref sb_prime_field_t::r_mod_p and \ref
- * sb_prime_field_t::r2_mod_p are used to store parameters for Montgomery
+ * Sweet B uses Montgomery multiplication. As such,
+ * ::sb_prime_field_t::p_mp, ::sb_prime_field_t::r_mod_p and
+ * ::sb_prime_field_t::r2_mod_p are used to store parameters for Montgomery
  * multiplication and Montgomery domain conversion.
  *
  * Inversion mod p uses Fermat's little theorem: n^-1 == n^(p-2) mod p
@@ -475,10 +476,10 @@ static const sb_fe_t SB_FE_ZERO = SB_FE_CONST(0, 0, 0, 0);
  * than this approach, but this works "well enough" for our purposes.
  */
 typedef struct sb_prime_field_t {
-    /** The prime as a \ref sb_fe_t value. */
+    /** The prime as a ::sb_fe_t value. */
     sb_fe_t p;
 
-    /** -(p^-1) mod M, where M is the size of \ref sb_word_t . */
+    /** -(p^-1) mod M, where M is the size of ::sb_word_t . */
     sb_word_t p_mp;
 
     /** First factor of p - 2, used for Fermat's little theorem based
@@ -496,7 +497,7 @@ typedef struct sb_prime_field_t {
 
     /** The number of bits in the prime. */
     sb_bitcount_t bits;
-} sb_prime_field_t;
+} sb_prime_field_t; /**< Convenience typedef */
 
 // Assembly assumes that p_mp is at a fixed offset based on the size of sb_fe_t.
 #if SB_FE_ASM
@@ -512,7 +513,7 @@ _Static_assert(offsetof(sb_prime_field_t, p_mp) == SB_ELEM_BYTES,
  * endianness \p e.
  *
  * @param [out] dest The resulting field element.
- * @param [in] src The \ref SB_ELEM_BYTES representing the field element in the
+ * @param [in] src The ::SB_ELEM_BYTES representing the field element in the
  * endianness \p e.
  * @param [in] e The endianness of the input bytes.
  */
@@ -526,7 +527,7 @@ extern void sb_fe_from_bytes(sb_fe_t dest[static restrict 1],
  * Given a field element, convert it to a set of bytes using the supplied
  * endinanness \p e.
  *
- * @param [out] dest The resulting set of \ref SB_ELEM_BYTES bytes.
+ * @param [out] dest The resulting set of ::SB_ELEM_BYTES bytes.
  * @param [in] src The field element.
  * @param [in] e The endianness of the output bytes.
  */
@@ -553,7 +554,7 @@ extern sb_word_t sb_fe_equal(const sb_fe_t left[static 1],
  * @brief Test whether a given bit is set in a field element.
  *
  * @param [in] a The field element to test.
- * @param [in] bit The bit to test. Must be less than \ref SB_FE_BITS.
+ * @param [in] bit The bit to test. Must be less than ::SB_FE_BITS.
  * @return The bit at position \p bit in the field element \p a.
  */
 extern sb_word_t sb_fe_test_bit(const sb_fe_t a[static 1], sb_bitcount_t bit);
@@ -745,7 +746,7 @@ extern void sb_fe_mod_negate(sb_fe_t dest[static 1],
  * @brief Constant-time Montgomery multiplication.
  *
  * Computes \p left * \p right * R^-1 mod \p p, where R is the value defined
- * in \ref sb_prime_field_t::r_mod_p.
+ * in ::sb_prime_field_t::r_mod_p.
  *
  * @param [out] dest Result of the Montgomery multiplication. Must not alias
  * \p left or \p right.
@@ -762,7 +763,7 @@ extern void sb_fe_mont_mult(sb_fe_t dest[static restrict 1],
 /**
  * @brief Constant-time Montgomery squaring.
  *
- * Computes \p left ^ 2 * R^-1 mod \p p, where R is the value defined in \ref
+ * Computes \p left ^ 2 * R^-1 mod \p p, where R is the value defined in
  * sb_prime_field_t::r_mod_p.
  *
  * @param [out] dest Result of the Montgomery squaring. Must not alias \p left.
@@ -777,7 +778,7 @@ extern void sb_fe_mont_square(sb_fe_t dest[static restrict 1],
 /**
  * @brief Constant-time conversion to the Montgomery domain.
  *
- * Multiplies \p left by R mod \p p, where R is the value defined in \ref
+ * Multiplies \p left by R mod \p p, where R is the value defined in
  * sb_prime_field_t::r_mod_p. Used to add a factor of R before Montgomery
  * multiplication.
  *
@@ -793,7 +794,7 @@ extern void sb_fe_mont_convert(sb_fe_t dest[static restrict 1],
 /**
  * @brief Constant-time Montgomery reduction.
  *
- * Multiplies \p left by R^-1 mod \p p, where R is the value defined in \ref
+ * Multiplies \p left by R^-1 mod \p p, where R is the value defined in
  * sb_prime_field_t::r_mod_p. Used to remove a factor of R after Montgomery
  * multiplication.
  *
@@ -813,7 +814,7 @@ extern void sb_fe_mont_reduce(sb_fe_t dest[static restrict 1],
  * dest ^ -1 in the Montgomery domain using helper storage \p t2 and \p t3.
  * This procedure is constant time with respect to the input value in \p
  * dest, but not with respect to the prime field. Inversion uses Fermat's
- * little theorem; see \ref sb_prime_field_t for more details.
+ * little theorem; see ::sb_prime_field_t for more details.
  *
  * @param [in,out] dest Value to be inverted, and where the result of the
  * inversion is stored.

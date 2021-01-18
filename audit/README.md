@@ -118,7 +118,7 @@ by providing a new API `sb_hmac_drbg_generate_additional_dummy` which
 provides static additional input to the HMAC_DRBG generate routine, and by
 using this API in all contexts where additional input is not otherwise
 available, with the exception of RFC6979 signing. The existing
-`sb_hmac_drbg_generate` API has beenretained for compliance with
+`sb_hmac_drbg_generate` API has been retained for compliance with
 [NIST SP 800-90A Rev. 1](https://csrc.nist.gov/publications/detail/sp/800-90a/rev-1/final),
 but the new API is recommended for use instead.
 

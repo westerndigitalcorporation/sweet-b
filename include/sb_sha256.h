@@ -46,6 +46,9 @@
 #include <stdint.h>
 #include <sb_types.h>
 
+/** @private
+  * @typedef sb_sha256_word_t
+  * @brief Word size that SHA256 operates on */
 typedef uint32_t sb_sha256_word_t;
 
 /** @brief The number of bytes in a SHA256 hash. */
@@ -53,28 +56,35 @@ typedef uint32_t sb_sha256_word_t;
 
 /* The following two definitions are for internal use only. */
 
+/** @private
+  * @brief Size of the SHA256 block, in bytes. */
 #define SB_SHA256_BLOCK_SIZE 64
 
+/** @private
+ *  @brief Intermediate hash state
+ */
 typedef struct sb_sha256_ihash_t {
-    sb_sha256_word_t v[8];
-} sb_sha256_ihash_t;
+    sb_sha256_word_t v[8]; ///< Words of the intermediate hash state
+} sb_sha256_ihash_t; /**< Convenience typedef */
 
 /** @struct sb_sha256_state_t
  *  @brief Opaque state structure. You are responsible for allocating this
  *  and passing it in to SHA256 operations. */
 typedef struct sb_sha256_state_t {
-    sb_sha256_ihash_t ihash; // Intermediate hash state
-    sb_sha256_ihash_t a_h; // a through h, the working variables
-    sb_sha256_word_t W[16]; // message schedule rotating window
-    sb_byte_t buffer[SB_SHA256_BLOCK_SIZE]; // Block-sized buffer of input
-    sb_size_t total_bytes; // Total number of bytes processed
-} sb_sha256_state_t;
+    /** @privatesection */
+    sb_sha256_ihash_t ihash; ///< Intermediate hash state
+    sb_sha256_ihash_t a_h; ///< a through h, the working variables
+    sb_sha256_word_t W[16]; ///< message schedule rotating window
+    sb_byte_t buffer[SB_SHA256_BLOCK_SIZE]; ///< Block-sized buffer of input
+    sb_size_t total_bytes; ///< Total number of bytes processed
+} sb_sha256_state_t; /**< Convenience typedef */
 
 /**
- * Initialize a SHA256 state object. Must be called before \ref sb_sha256_update
+ * Initialize a SHA256 state object. Must be called before ::sb_sha256_update
  * is called on input bytes.
  *
  * @param [out] sha SHA256 state. Must be allocated by the caller.
+ * @memberof sb_sha256_state_t
  */
 extern void sb_sha256_init(sb_sha256_state_t sha[static 1]);
 
@@ -84,10 +94,11 @@ extern void sb_sha256_init(sb_sha256_state_t sha[static 1]);
  * input buffer.
  *
  * @param [in,out] sha SHA256 state. Must be allocated by the caller and have
- * been previously initialized via \ref sb_sha256_init.
+ * been previously initialized via ::sb_sha256_init.
  * @param [in] input Input bytes of length \p len. Must not alias the SHA256
  * state. May be NULL if \p len is zero.
  * @param [in] len Length of \p input bytes.
+ * @memberof sb_sha256_state_t
  */
 extern void sb_sha256_update(sb_sha256_state_t sha[static restrict 1],
                              const sb_byte_t* restrict input,
@@ -95,13 +106,14 @@ extern void sb_sha256_update(sb_sha256_state_t sha[static restrict 1],
 
 /**
  * Calculate the SHA256 hash of the bytes that have been previously provided
- * in calls to \ref sb_sha256_update. Invalidates the SHA256 state.
+ * in calls to ::sb_sha256_update. Invalidates the SHA256 state.
  *
  * @param [in,out] sha SHA256 state. Must be allocated by the caller and have
- * been previously initialized via \ref sb_sha256_init. May have been updated by
- * one or more calls to \ref sb_sha256_update.
- * @param [out] output Resulting SHA256 hash, in the form of \ref
- * SB_SHA256_SIZE bytes.
+ * been previously initialized via ::sb_sha256_init. May have been updated by
+ * one or more calls to ::sb_sha256_update.
+ * @param [out] output Resulting SHA256 hash, in the form of
+ * ::SB_SHA256_SIZE bytes.
+ * @memberof sb_sha256_state_t
  */
 extern void sb_sha256_finish(sb_sha256_state_t sha[static restrict 1],
                              sb_byte_t output[static restrict SB_SHA256_SIZE]);
@@ -114,8 +126,9 @@ extern void sb_sha256_finish(sb_sha256_state_t sha[static restrict 1],
  * @param [in] input Input bytes of length \p len. Must not alias the SHA256
  * state. May be NULL if \p len is zero.
  * @param [in] len Length of \p input bytes.
- * @param [out] output Resulting SHA256 hash, in the form of \ref
- * SB_SHA256_SIZE bytes.
+ * @param [out] output Resulting SHA256 hash, in the form of
+ * ::SB_SHA256_SIZE bytes.
+ * @memberof sb_sha256_state_t
  */
 extern void sb_sha256_message(sb_sha256_state_t sha[static restrict 1],
                               sb_byte_t output[static restrict SB_SHA256_SIZE],

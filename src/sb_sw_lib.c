@@ -52,14 +52,14 @@
 #include <string.h>
 
 // Used for point addition and conjugate addition
-#define C_X1(ct) (&(ct)->param_use.curve_arith.p1.x)
-#define C_Y1(ct) (&(ct)->param_use.curve_arith.p1.y)
-#define C_X2(ct) (&(ct)->param_use.curve_arith.p2.x)
-#define C_Y2(ct) (&(ct)->param_use.curve_arith.p2.y)
-#define C_T5(ct) (&(ct)->param_use.curve_temporaries.t5)
-#define C_T6(ct) (&(ct)->param_use.curve_temporaries.t6)
-#define C_T7(ct) (&(ct)->param_use.curve_temporaries.t7)
-#define C_T8(ct) (&(ct)->param_use.curve_temporaries.t8)
+#define C_X1(ct) (&(ct)->param_use.curve_arith.p[0].x)
+#define C_Y1(ct) (&(ct)->param_use.curve_arith.p[0].y)
+#define C_X2(ct) (&(ct)->param_use.curve_arith.p[1].x)
+#define C_Y2(ct) (&(ct)->param_use.curve_arith.p[1].y)
+#define C_T5(ct) (&(ct)->param_use.curve_temporaries.t[0])
+#define C_T6(ct) (&(ct)->param_use.curve_temporaries.t[1])
+#define C_T7(ct) (&(ct)->param_use.curve_temporaries.t[2])
+#define C_T8(ct) (&(ct)->param_use.curve_temporaries.t[3])
 
 #define MULT_STATE(ct) (&(ct)->param_use.saved_state)
 

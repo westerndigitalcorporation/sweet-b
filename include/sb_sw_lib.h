@@ -48,6 +48,7 @@
 
 #include <sb_types.h>
 #include <sb_hmac_drbg.h>
+#include <sb_sha256.h>
 #include <sb_hkdf.h>
 #include <sb_sw_context.h>
 
@@ -72,13 +73,17 @@ typedef sb_single_t sb_sw_compressed_t;
 /** An ECDSA signature on a 256-bit short Weierstrass curve. */
 typedef sb_double_t sb_sw_signature_t;
 
+/** @def SB_SW_P256_SUPPORT
+    @brief Define this to 0 to disable NIST P-256 curve support in Sweet B. */
 #ifndef SB_SW_P256_SUPPORT
-/** Define this to 0 to disable NIST P-256 curve support in Sweet B. */
 #define SB_SW_P256_SUPPORT 1
 #endif
 
+/** @def SB_SW_SECP256K1_SUPPORT
+    @brief Define this to 0 to disable SECG secp256k1 curve support in
+    Sweet B. */
+
 #ifndef SB_SW_SECP256K1_SUPPORT
-/** Define this to 0 to disable SECG secp256k1 curve support in Sweet B. */
 #define SB_SW_SECP256K1_SUPPORT 1
 #endif
 
@@ -86,10 +91,11 @@ typedef sb_double_t sb_sw_signature_t;
 #error "One of SB_SW_P256_SUPPORT or SB_SW_SECP256K1_SUPPORT must be enabled!"
 #endif
 
-/** The number of candidates to be tested for private key and per-message
- *  secret generation. This is set to a number that reduces the probability of
- *  failure to an acceptably low threshold. For both NIST P-256 and
- *  secp256k1, the default value has a failure probability of <2^-256. */
+/** @def SB_SW_FIPS186_4_CANDIDATES
+ *  @brief The number of candidates to be tested for private key and
+ *  per-message secret generation. This is set to a number that reduces the
+ *  probability of failure to an acceptably low threshold. For both NIST P-256
+ *  and secp256k1, the default value has a failure probability of <2^-256. */
 #define SB_SW_FIPS186_4_CANDIDATES SB_SW_CONTEXT_PARAM_BUF_ELEMS
 
 /** @brief Enumeration of short Weierstrass curves supported by Sweet B. Pass
@@ -109,31 +115,31 @@ typedef enum sb_sw_curve_id_value_t {
 #endif
 } sb_sw_curve_id_value_t;
 
-/** Wrapper for \ref sb_sw_curve_id_value_t values for ABI stability. */
+/** Wrapper for ::sb_sw_curve_id_value_t values for ABI stability. */
 typedef uint32_t sb_sw_curve_id_t;
 
 // see sb_types.h for the definition of sb_data_endian_t
 
 /** @name Short Weierstrass curve functions
  * All of the following methods take an initial parameter of type
- * \ref sb_sw_context_t. You are responsible for allocating this context
+ * ::sb_sw_context_t. You are responsible for allocating this context
  * structure. You may allocate different structures for each call or reuse
  * the same structure multiple times. The context is small (512 bytes) and
  * may be stack allocated.
  *
- * All of the following functions return \ref sb_error_t. \ref sb_error_t the
+ * All of the following functions return ::sb_error_t. ::sb_error_t the
  * bitwise or of multiple error values; you MUST test for specific error
  * values by checking whether the appropriate bit is set in the return value.
- * Four errors (\ref SB_ERROR_CURVE_INVALID, \ref SB_ERROR_RESEED_REQUIRED,
- * \ref SB_ERROR_DRBG_FAILURE, and \ref SB_ERROR_DRBG_UNINITIALIZED) are
+ * Four errors (::SB_ERROR_CURVE_INVALID, ::SB_ERROR_RESEED_REQUIRED,
+ * ::SB_ERROR_DRBG_FAILURE, and ::SB_ERROR_DRBG_UNINITIALIZED) are
  * returned immediately, which is to say that no further computation is
  * performed if any of these errors occurs. If the function accepts a
  * private or public key, the key(s) will be validated before any computation
  * is performed. Otherwise, these functions will run to completion in
  * constant time with respect to the non-curve inputs; if the function
  * produces output, the output returned will be junk if the return value is
- * not \ref SB_SUCCESS. See \ref sb_sw_valid_public_key and
- * \ref sb_sw_verify_signature for notes on the return value of these functions.
+ * not ::SB_SUCCESS. See ::sb_sw_valid_public_key and
+ * ::sb_sw_verify_signature for notes on the return value of these functions.
  *
  * Most of these functions accept a DRBG as a parameter. For private key
  * generation, the DRBG is a mandatory parameter and must be properly seeded
@@ -143,11 +149,10 @@ typedef uint32_t sb_sw_curve_id_t;
  * FIPS-compatible randomized signatures and for side-channel mitigation. For
  * all other operations, the DRBG is an optional parameter and is used only for
  * side-channel mitigations. When a DRBG is supplied, any of these functions
- * may return \ref SB_ERROR_RESEED_REQUIRED or \ref
- * SB_ERROR_DRBG_UNINITIALIZED. Any function which accepts a DRBG,
- * either optionally or as a mandatory parameter, may also return \ref
- * SB_ERROR_DRBG_FAILURE. This error is expected to occur only in extremely
- * low probability cases.
+ * may return ::SB_ERROR_RESEED_REQUIRED or ::SB_ERROR_DRBG_UNINITIALIZED. Any
+ * function which accepts a DRBG, either optionally or as a mandatory
+ * parameter, may also return ::SB_ERROR_DRBG_FAILURE. This error is expected
+ * to occur only in extremely low probability cases.
  *
  * If you are unfamiliar with the [static 1] syntax, this declaration tells
  * the compiler that the passed pointer is non-\c NULL.
@@ -163,7 +168,7 @@ typedef uint32_t sb_sw_curve_id_t;
  *
  *  This is the only method which requires a HMAC-DRBG instance to be passed.
  *  You do not need to use this method to generate private keys. Alternatively,
- *  you could repeatedly call \ref sb_sw_compute_public_key with random bytes
+ *  you could repeatedly call ::sb_sw_compute_public_key with random bytes
  *  until it succeeds.
  *
  *  @param [in] context Private context structure allocated by the caller.
@@ -172,8 +177,9 @@ typedef uint32_t sb_sw_curve_id_t;
  *  @param [in] curve Curve to generate the key on.
  *  @param [in] e Endianness of generated private key. Use big endian for
  *  most situations.
- *  @return On success, \ref SB_SUCCESS. Fails if the curve specified is
+ *  @return On success, ::SB_SUCCESS. Fails if the curve specified is
  *  invalid, if the DRBG must be reseeded, or in the case of DRBG failure.
+ *  @memberof sb_sw_context_t
  */
 
 extern sb_error_t sb_sw_generate_private_key(sb_sw_context_t context[static 1],
@@ -196,8 +202,9 @@ extern sb_error_t sb_sw_generate_private_key(sb_sw_context_t context[static 1],
  *  @param [in] curve Curve to generate the key on.
  *  @param [in] e Endianness of generated private key. Use big endian for
  *  most situations.
- *  @return On success, \ref SB_SUCCESS. Fails if the curve specified is
+ *  @return On success, ::SB_SUCCESS. Fails if the curve specified is
  *  invalid, if the DRBG must be reseeded, or in the case of DRBG failure.
+ *  @memberof sb_sw_context_t
  */
 
 extern sb_error_t sb_sw_hkdf_expand_private_key
@@ -221,9 +228,10 @@ extern sb_error_t sb_sw_hkdf_expand_private_key
  *  @param [in] curve Curve to use when inverting the private key.
  *  @param [in] e Endianness of \p output and \p private. Use big endian for
  *  most situations.
- *  @return On success, \ref SB_SUCCESS. Fails if the curve specified is
+ *  @return On success, ::SB_SUCCESS. Fails if the curve specified is
  *  invalid, the private key supplied is invalid, if the optionally supplied
  *  DRBG requires reseeding, or in the case of DRBG failure.
+ *  @memberof sb_sw_context_t
  */
 extern sb_error_t sb_sw_invert_private_key
     (sb_sw_context_t context[static 1],
@@ -244,9 +252,10 @@ extern sb_error_t sb_sw_invert_private_key
  *  @param [in] curve Curve to use when generating the public key.
  *  @param [in] e Endianness of \p private and \p public. Use big endian for
  *  most situations.
- *  @return On success, \ref SB_SUCCESS. Fails if the curve specified is
+ *  @return On success, ::SB_SUCCESS. Fails if the curve specified is
  *  invalid, the private key supplied is invalid, if the optionally supplied
  *  DRBG requires reseeding, or in the case of DRBG failure.
+ *  @memberof sb_sw_context_t
  */
 extern sb_error_t sb_sw_compute_public_key(sb_sw_context_t context[static 1],
                                            sb_sw_public_t public[static 1],
@@ -264,9 +273,10 @@ extern sb_error_t sb_sw_compute_public_key(sb_sw_context_t context[static 1],
  *  side-channel mitigations.
  *  @param [in] curve Curve to use when generating the public key.
  *  @param [in] e Endianness of \p private. Use big endian for most situations.
- *  @return On success, \ref SB_SUCCESS. Fails if the curve specified is
+ *  @return On success, ::SB_SUCCESS. Fails if the curve specified is
  *  invalid, the private key supplied is invalid, if the optionally supplied
  *  DRBG requires reseeding, or in the case of DRBG failure.
+ *  @memberof sb_sw_context_t
  */
 extern sb_error_t sb_sw_compute_public_key_start
     (sb_sw_context_t context[static 1],
@@ -280,8 +290,9 @@ extern sb_error_t sb_sw_compute_public_key_start
  *  @param [in] context Private context structure allocated by the caller.
  *  @param [out] done Indication of whether computation is done (no further
  *  progress can be made until the finish function is called).
- *  @return On success, \ref SB_SUCCESS. Fails if the context has not been
- *  initialized by a prior to call to \ref sb_sw_compute_public_key_start.
+ *  @return On success, ::SB_SUCCESS. Fails if the context has not been
+ *  initialized by a prior to call to ::sb_sw_compute_public_key_start.
+ *  @memberof sb_sw_context_t
  */
 extern sb_error_t sb_sw_compute_public_key_continue
     (sb_sw_context_t context[static 1],
@@ -292,8 +303,9 @@ extern sb_error_t sb_sw_compute_public_key_continue
  *  @param [in] context Private context structure allocated by the caller.
  *  @param [out] public Public key corresponding to the supplied private key.
  *  @param [in] e Endianness of \p public. Use big endian for most situations.
- *  @return On success, \ref SB_SUCCESS. Fails if the context has not been
- *  initialized by a prior to call to \ref sb_sw_compute_public_key_start.
+ *  @return On success, ::SB_SUCCESS. Fails if the context has not been
+ *  initialized by a prior to call to ::sb_sw_compute_public_key_start.
+ *  @memberof sb_sw_context_t
  */
 extern sb_error_t sb_sw_compute_public_key_finish
     (sb_sw_context_t context[static 1],
@@ -314,6 +326,7 @@ extern sb_error_t sb_sw_compute_public_key_finish
  *  @return Returns SB_SUCCESS if the supplied private key is valid or
  *  SB_ERROR_PRIVATE_KEY_INVALID exclusively if the key supplied is invalid.
  *  Fails if the curve supplied is invalid.
+ *  @memberof sb_sw_context_t
  */
 extern sb_error_t sb_sw_valid_private_key(sb_sw_context_t context[static 1],
                                           const sb_sw_private_t private[static 1],
@@ -333,6 +346,7 @@ extern sb_error_t sb_sw_valid_private_key(sb_sw_context_t context[static 1],
  *  @return Returns SB_SUCCESS if the supplied public key is valid or
  *  SB_ERROR_INVALID_PUBLIC_KEY exclusively if the key supplied is invalid.
  *  Fails if the curve supplied is invalid.
+ *  @memberof sb_sw_context_t
  */
 
 extern sb_error_t sb_sw_valid_public_key(sb_sw_context_t context[static 1],
@@ -340,7 +354,7 @@ extern sb_error_t sb_sw_valid_public_key(sb_sw_context_t context[static 1],
                                          sb_sw_curve_id_t curve,
                                          sb_data_endian_t e);
 
-/** Compress the supplied public key into a single \ref SB_ELEM_BYTES long
+/** Compress the supplied public key into a single ::SB_ELEM_BYTES long
  *  value and an extra "sign" bit. If the key is only to be used for shared
  *  secret generation, the "sign" bit may be ignored.
  *
@@ -355,6 +369,7 @@ extern sb_error_t sb_sw_valid_public_key(sb_sw_context_t context[static 1],
  *  @return Returns SB_SUCCESS if the supplied public key is valid or
  *  SB_ERROR_INVALID_PUBLIC_KEY exclusively if the key supplied is invalid.
  *  Fails if the curve supplied is invalid.
+ *  @memberof sb_sw_context_t
  */
 
 extern sb_error_t sb_sw_compress_public_key(sb_sw_context_t context[static 1],
@@ -379,6 +394,7 @@ extern sb_error_t sb_sw_compress_public_key(sb_sw_context_t context[static 1],
  *  @return Returns SB_SUCCESS if the supplied public key is valid or
  *  SB_ERROR_INVALID_PUBLIC_KEY exclusively if the key supplied is invalid.
  *  Fails if the curve supplied is invalid.
+ *  @memberof sb_sw_context_t
  */
 extern sb_error_t sb_sw_decompress_public_key(sb_sw_context_t context[static 1],
                                               sb_sw_public_t public[static 1],
@@ -404,9 +420,10 @@ extern sb_error_t sb_sw_decompress_public_key(sb_sw_context_t context[static 1],
  *  @param [in] curve Curve on which to generate the ECDH shared secret.
  *  @param [in] e Endianness of the \p private and \p public keys. Use big
  *  endian for most situations.
- *  @return On success, \ref SB_SUCCESS. Fails if the supplied curve,
+ *  @return On success, ::SB_SUCCESS. Fails if the supplied curve,
  *  private, or public keys are invalid, if the optionally supplied DRBG
  *  requires reseeding, or in the case of DRBG failure.
+ *  @memberof sb_sw_context_t
  */
 extern sb_error_t sb_sw_shared_secret(sb_sw_context_t context[static 1],
                                       sb_sw_shared_secret_t secret[static 1],
@@ -417,7 +434,7 @@ extern sb_error_t sb_sw_shared_secret(sb_sw_context_t context[static 1],
                                       sb_data_endian_t e);
 
 /** Begins generating an ECDH shared secret using the given private key and
- *  public key. See \ref sb_sw_shared_secret for notes on how to use the
+ *  public key. See ::sb_sw_shared_secret for notes on how to use the
  *  output of this function.
  *
  *  @param [in] context Private context structure allocated by the caller.
@@ -428,9 +445,10 @@ extern sb_error_t sb_sw_shared_secret(sb_sw_context_t context[static 1],
  *  @param [in] curve Curve on which to generate the ECDH shared secret.
  *  @param [in] e Endianness of the \p private key. Use big endian for most
  *  situations.
- *  @return On success, \ref SB_SUCCESS. Fails if the supplied curve,
+ *  @return On success, ::SB_SUCCESS. Fails if the supplied curve,
  *  private, or public keys are invalid, if the optionally supplied DRBG
  *  requires reseeding, or in the case of DRBG failure.
+ *  @memberof sb_sw_context_t
  */
 extern sb_error_t sb_sw_shared_secret_start
     (sb_sw_context_t context[static 1],
@@ -446,8 +464,9 @@ extern sb_error_t sb_sw_shared_secret_start
  *  @param [in] context Private context structure allocated by the caller.
  *  @param [out] done Indication of whether computation is done (no further
  *  progress can be made until the finish function is called).
- *  @return On success, \ref SB_SUCCESS. Fails if the context has not been
- *  initialized by a prior to call to \ref sb_sw_shared_secret_start.
+ *  @return On success, ::SB_SUCCESS. Fails if the context has not been
+ *  initialized by a prior to call to ::sb_sw_shared_secret_start.
+ *  @memberof sb_sw_context_t
  */
 extern sb_error_t sb_sw_shared_secret_continue
     (sb_sw_context_t context[static 1],
@@ -460,8 +479,9 @@ extern sb_error_t sb_sw_shared_secret_continue
  *  @param [out] secret Generated shared secret.
  *  @param [in] e Endianness of the \p secret. Use big endian for most
  *  situations.
- *  @return On success, \ref SB_SUCCESS. Fails if the context has not been
- *  initialized by a prior to call to \ref sb_sw_shared_secret_start.
+ *  @return On success, ::SB_SUCCESS. Fails if the context has not been
+ *  initialized by a prior to call to ::sb_sw_shared_secret_start.
+ *  @memberof sb_sw_context_t
  */
 extern sb_error_t sb_sw_shared_secret_finish
     (sb_sw_context_t context[static 1],
@@ -469,10 +489,10 @@ extern sb_error_t sb_sw_shared_secret_finish
      sb_data_endian_t e);
 
 /** Multiply the given public key by the given private key. This is
- *  equvialent to \ref sb_sw_shared_secret, except it returns the full X and
+ *  equvialent to ::sb_sw_shared_secret, except it returns the full X and
  *  Y coordinates of the output point, instead of just the X coordinate. It
  *  is more efficient to use this method than a combination of
- *  \ref sb_sw_shared_secret and \ref sb_sw_decompress_public_key in protocols
+ *  ::sb_sw_shared_secret and ::sb_sw_decompress_public_key in protocols
  *  that need a full X and Y coordinate output, and it avoids the loss of the
  *  "sign" bit.
  *
@@ -485,9 +505,10 @@ extern sb_error_t sb_sw_shared_secret_finish
  *  @param [in] curve Curve on which to generate the ECDH shared secret.
  *  @param [in] e Endianness of the \p public key and \p output point. Use big
  *  endian for most situations.
- *  @return On success, \ref SB_SUCCESS. Fails if the supplied curve,
+ *  @return On success, ::SB_SUCCESS. Fails if the supplied curve,
  *  private, or public keys are invalid, if the optionally supplied DRBG
  *  requires reseeding, or in the case of DRBG failure.
+ *  @memberof sb_sw_context_t
  */
 extern sb_error_t sb_sw_point_multiply(sb_sw_context_t context[static 1],
                                        sb_sw_public_t output[static 1],
@@ -498,7 +519,7 @@ extern sb_error_t sb_sw_point_multiply(sb_sw_context_t context[static 1],
                                        sb_data_endian_t e);
 
 /** Begins multiplying the given public key by the given private key. See
- *  \ref sb_sw_point_multiply for notes on how to use this function.
+ *  ::sb_sw_point_multiply for notes on how to use this function.
  *
  *  @param [in] context Private context structure allocated by the caller.
  *  @param [in] private Supplied private key.
@@ -508,9 +529,10 @@ extern sb_error_t sb_sw_point_multiply(sb_sw_context_t context[static 1],
  *  @param [in] curve Curve on which to generate the ECDH shared secret.
  *  @param [in] e Endianness of the \p public key. Use big endian for
  *  most situations.
- *  @return On success, \ref SB_SUCCESS. Fails if the supplied curve,
+ *  @return On success, ::SB_SUCCESS. Fails if the supplied curve,
  *  private, or public keys are invalid, if the optionally supplied DRBG
  *  requires reseeding, or in the case of DRBG failure.
+ *  @memberof sb_sw_context_t
  */
 extern sb_error_t sb_sw_point_multiply_start
     (sb_sw_context_t context[static 1],
@@ -525,8 +547,9 @@ extern sb_error_t sb_sw_point_multiply_start
  *  @param [in] context Private context structure allocated by the caller.
  *  @param [out] done Indication of whether computation is done (no further
  *  progress can be made until the finish function is called).
- *  @return On success, \ref SB_SUCCESS. Fails if the context has not been
- *  initialized by a prior to call to \ref sb_sw_point_multiply_start.
+ *  @return On success, ::SB_SUCCESS. Fails if the context has not been
+ *  initialized by a prior to call to ::sb_sw_point_multiply_start.
+ *  @memberof sb_sw_context_t
  */
 extern sb_error_t sb_sw_point_multiply_continue
     (sb_sw_context_t context[static 1],
@@ -538,8 +561,9 @@ extern sb_error_t sb_sw_point_multiply_continue
  *  @param [out] output Result of the point multiplication.
  *  @param [in] e Endianness of the \p output point. Use big endian for
  *  most situations.
- *  @return On success, \ref SB_SUCCESS. Fails if the context has not been
- *  initialized by a prior to call to \ref sb_sw_point_multiply_start.
+ *  @return On success, ::SB_SUCCESS. Fails if the context has not been
+ *  initialized by a prior to call to ::sb_sw_point_multiply_start.
+ *  @memberof sb_sw_context_t
  */
 extern sb_error_t sb_sw_point_multiply_finish
     (sb_sw_context_t context[static 1],
@@ -565,9 +589,10 @@ extern sb_error_t sb_sw_point_multiply_finish
  *  @param [in] curve Curve on which to generate the signature.
  *  @param [in] e Endianness of the private key, message digest, and
  *  signature. Use big endian for most situations.
- *  @return On success, \ref SB_SUCCESS. Fails if the supplied curve or
+ *  @return On success, ::SB_SUCCESS. Fails if the supplied curve or
  *  private key are invalid, if the optionally supplied DRBG requires
  *  reseeding, or in the case of DRBG failure.
+ *  @memberof sb_sw_context_t
  */
 extern sb_error_t sb_sw_sign_message_sha256
     (sb_sw_context_t context[static 1],
@@ -587,10 +612,10 @@ extern sb_error_t sb_sw_sign_message_sha256
  *  unique per (private key, message) combination. If no \p drbg is
  *  supplied, RFC6979 deterministic secret generation is used instead.
  *
- *  It is recommended to use \ref sb_sw_sign_message_sha256 or
- *  \ref sb_sw_sign_message_sha256_start whenever possible. This routine is
+ *  It is recommended to use ::sb_sw_sign_message_sha256 or
+ *  ::sb_sw_sign_message_sha256_start whenever possible. This routine is
  *  provided for use cases where a 256-bit message digest is already available,
- *  and has presumably been computed using \ref sb_sha256_finish. If using this
+ *  and has presumably been computed using ::sb_sha256_finish. If using this
  *  with message digests from other sources, you are responsible for ensuring
  *  that you are using a secure hash function. Do NOT call this routine with
  *  hashes of a different size (e.g. SHA-224 or SHA-512).
@@ -605,9 +630,10 @@ extern sb_error_t sb_sw_sign_message_sha256
  *  @param [in] curve Curve on which to generate the signature.
  *  @param [in] e Endianness of the private key, message digest, and
  *  signature. Use big endian for most situations.
- *  @return On success, \ref SB_SUCCESS. Fails if the supplied curve or
+ *  @return On success, ::SB_SUCCESS. Fails if the supplied curve or
  *  private key are invalid, if the optionally supplied DRBG requires
  *  reseeding, or in the case of DRBG failure.
+ *  @memberof sb_sw_context_t
  */
 extern sb_error_t sb_sw_sign_message_digest(sb_sw_context_t context[static 1],
                                             sb_sw_signature_t signature[static 1],
@@ -619,7 +645,7 @@ extern sb_error_t sb_sw_sign_message_digest(sb_sw_context_t context[static 1],
                                             sb_data_endian_t e);
 
 /** Begins signing the 32-byte message digest using the provided private key.
- *  See \ref sb_sw_sign_message_digest for notes on how to use this function.
+ *  See ::sb_sw_sign_message_digest for notes on how to use this function.
  *
  *  @param [in] context Private context structure allocated by the caller.
  *  @param [in] private Supplied private key to use for the signature operation.
@@ -629,9 +655,10 @@ extern sb_error_t sb_sw_sign_message_digest(sb_sw_context_t context[static 1],
  *  @param [in] curve Curve on which to generate the signature.
  *  @param [in] e Endianness of the private key, message digest, and
  *  signature. Use big endian for most situations.
- *  @return On success, \ref SB_SUCCESS. Fails if the supplied curve or
+ *  @return On success, ::SB_SUCCESS. Fails if the supplied curve or
  *  private key are invalid, if the optionally supplied DRBG requires
  *  reseeding, or in the case of DRBG failure.
+ *  @memberof sb_sw_context_t
  */
 extern sb_error_t sb_sw_sign_message_digest_start
     (sb_sw_context_t context[static 1],
@@ -653,9 +680,10 @@ extern sb_error_t sb_sw_sign_message_digest_start
  *  @param [in] curve Curve on which to generate the signature.
  *  @param [in] e Endianness of the private key, message digest, and
  *  signature. Use big endian for most situations.
- *  @return On success, \ref SB_SUCCESS. Fails if the supplied curve or
+ *  @return On success, ::SB_SUCCESS. Fails if the supplied curve or
  *  private key are invalid, if the optionally supplied DRBG requires
  *  reseeding, or in the case of DRBG failure.
+ *  @memberof sb_sw_context_t
  */
 extern sb_error_t sb_sw_sign_message_sha256_start
     (sb_sw_context_t context[static 1],
@@ -670,8 +698,9 @@ extern sb_error_t sb_sw_sign_message_sha256_start
  *  @param [in] context Private context structure allocated by the caller.
  *  @param [out] done Indication of whether computation is done (no further
  *  progress can be made until the finish function is called).
- *  @return On success, \ref SB_SUCCESS. Fails if the context has not been
- *  initialized by a prior to call to \ref sb_sw_sign_message_digest_start.
+ *  @return On success, ::SB_SUCCESS. Fails if the context has not been
+ *  initialized by a prior to call to ::sb_sw_sign_message_digest_start.
+ *  @memberof sb_sw_context_t
  */
 extern sb_error_t sb_sw_sign_message_digest_continue
     (sb_sw_context_t context[static 1],
@@ -684,8 +713,9 @@ extern sb_error_t sb_sw_sign_message_digest_continue
  *  digest.
  *  @param [in] e Endianness of the \p signature. Use big endian for most
  *  situations.
- *  @return On success, \ref SB_SUCCESS. Fails if the context has not been
- *  initialized by a prior to call to \ref sb_sw_sign_message_digest_start.
+ *  @return On success, ::SB_SUCCESS. Fails if the context has not been
+ *  initialized by a prior to call to ::sb_sw_sign_message_digest_start.
+ *  @memberof sb_sw_context_t
  */
 extern sb_error_t sb_sw_sign_message_digest_finish
     (sb_sw_context_t context[static 1],
@@ -694,23 +724,24 @@ extern sb_error_t sb_sw_sign_message_digest_finish
 
 /** Produces a modified message digest that, when signed by some external
  *  private key with public key P, creates a signature that can be processed
- *  by \ref sb_sw_composite_sign_unwrap_signature to produce a valid
+ *  by ::sb_sw_composite_sign_unwrap_signature to produce a valid
  *  signature under the composite public key \p private * P. The composite
- *  public key can be computed using \ref sb_sw_point_multiply.
+ *  public key can be computed using ::sb_sw_point_multiply.
  *
- * @param [in] context Private context structure allocated by the caller.
- * @param [out] wrapped Wrapped message digest.
- * @param [in] message Original message digest to be wrapped.
- * @param [in] private Private key to be combined with \p
- * message_digest.
- * @param [in] drbg Optional DRBG, used to generate entropy for side-channel
- * mitigations.
- * @param [in] curve The curve to use when wrapping the message.
- * @param [in] e Endianness of \p output, \p private, and \p message_digest.
- * Use big endian for most situations.
- * @return On success, \ref SB_SUCCESS. Fails if the curve specified is
- * invalid, the private key supplied is invalid, if the optionally supplied
- * DRBG requires reseeding, or in case of DRBG failure.
+ *  @param [in] context Private context structure allocated by the caller.
+ *  @param [out] wrapped Wrapped message digest.
+ *  @param [in] message Original message digest to be wrapped.
+ *  @param [in] private Private key to be combined with \p
+ *  message_digest.
+ *  @param [in] drbg Optional DRBG, used to generate entropy for side-channel
+ *  mitigations.
+ *  @param [in] curve The curve to use when wrapping the message.
+ *  @param [in] e Endianness of \p output, \p private, and \p message_digest.
+ *  Use big endian for most situations.
+ *  @return On success, ::SB_SUCCESS. Fails if the curve specified is
+ *  invalid, the private key supplied is invalid, if the optionally supplied
+ *  DRBG requires reseeding, or in case of DRBG failure.
+ *  @memberof sb_sw_context_t
  */
 extern sb_error_t sb_sw_composite_sign_wrap_message_digest
     (sb_sw_context_t context[static 1],
@@ -722,11 +753,11 @@ extern sb_error_t sb_sw_composite_sign_wrap_message_digest
      sb_data_endian_t e);
 
 /** Produces a modified signature of a message digest previously wrapped by
- *  \ref sb_sw_composite_sign_wrap_message_digest and signed by some external
+ *  ::sb_sw_composite_sign_wrap_message_digest and signed by some external
  *  private key with public key P. The result is a valid signature of the
  *  pre-wrapped message which can be verified using the composite public key
- *  private * P. The composite public key can be computed using \ref
- *  sb_sw_point_multiply.
+ *  private * P. The composite public key can be computed using
+ *  ::sb_sw_point_multiply.
  *
  *  @param [in] context Private context structure allocated by the caller.
  *  @param [out] unwrapped Unwrapped signature which can be verified using
@@ -737,8 +768,9 @@ extern sb_error_t sb_sw_composite_sign_wrap_message_digest
  *  @param [in] curve The curve to use when unwrapping the signature.
  *  @param [in] e Endianness of \p output, \p private, and \p signature. Use
  *  big endian for most situations.
- *  @return On success, \ref SB_SUCCESS. Fails if the curve specified is
+ *  @return On success, ::SB_SUCCESS. Fails if the curve specified is
  *  invalid or if the private key supplied is invalid.
+ *  @memberof sb_sw_context_t
  */
 extern sb_error_t sb_sw_composite_sign_unwrap_signature
     (sb_sw_context_t context[static 1],
@@ -768,6 +800,7 @@ extern sb_error_t sb_sw_composite_sign_unwrap_signature
  *  SB_ERROR_SIGNATURE_INVALID exclusively if the signature is invalid. Fails
  *  if the supplied curve or public key is invalid, if the optionally
  *  supplied drbg requires reseeding, or in the case of DRBG failure.
+ *  @memberof sb_sw_context_t
  */
 extern sb_error_t sb_sw_verify_signature_sha256
     (sb_sw_context_t context[static 1],
@@ -783,10 +816,10 @@ extern sb_error_t sb_sw_verify_signature_sha256
 /** Verifies a supplied signature of a given message digest with a given
  *  public key.
  *
- *  It is recommended to use \ref sb_sw_verify_signature_sha256 or
- *  \ref sb_sw_verify_signature_sha256_start whenever possible. This routine is
+ *  It is recommended to use ::sb_sw_verify_signature_sha256 or
+ *  ::sb_sw_verify_signature_sha256_start whenever possible. This routine is
  *  provided for use cases where a 256-bit message digest is already available,
- *  and has presumably been computed using \ref sb_sha256_finish. If using this
+ *  and has presumably been computed using ::sb_sha256_finish. If using this
  *  with message digests from other sources, you are responsible for ensuring
  *  that you are using a secure hash function. Do NOT call this routine with
  *  hashes of a different size (e.g. SHA-224 or SHA-512).
@@ -806,6 +839,7 @@ extern sb_error_t sb_sw_verify_signature_sha256
  *  SB_ERROR_SIGNATURE_INVALID exclusively if the signature is invalid. Fails
  *  if the supplied curve or public key is invalid, if the optionally
  *  supplied drbg requires reseeding, or in the case of DRBG failure.
+ *  @memberof sb_sw_context_t
  */
 extern sb_error_t sb_sw_verify_signature(sb_sw_context_t context[static 1],
                                          const sb_sw_signature_t signature[static 1],
@@ -816,7 +850,7 @@ extern sb_error_t sb_sw_verify_signature(sb_sw_context_t context[static 1],
                                          sb_data_endian_t e);
 
 /** Begins verifying a supplied signature of a given message digest with a given
- *  public key. See \ref sb_sw_verify_signature for notes on how to use this
+ *  public key. See ::sb_sw_verify_signature for notes on how to use this
  *  method.
  *
  *  @param [in] context Private context structure allocated by the caller.
@@ -833,6 +867,7 @@ extern sb_error_t sb_sw_verify_signature(sb_sw_context_t context[static 1],
  *  @return Returns SB_SUCCESS if verification has been started. Fails
  *  if the supplied curve or public key is invalid, if the optionally
  *  supplied drbg requires reseeding, or in the case of DRBG failure.
+ *  @memberof sb_sw_context_t
  */
 extern sb_error_t sb_sw_verify_signature_start
     (sb_sw_context_t context[static 1],
@@ -845,7 +880,7 @@ extern sb_error_t sb_sw_verify_signature_start
 
 /** Finishes computing the SHA256 hash of a message, and begins verifying the
  *  supplied signature of the resulting digest with a given public key.
- *  See \ref sb_sw_verify_signature for notes on how to use this method.
+ *  See ::sb_sw_verify_signature for notes on how to use this method.
  *
  *  @param [in] context Private context structure allocated by the caller.
  *  @param [in,out] sha SHA256 state to use to obtain the message digest.
@@ -861,6 +896,7 @@ extern sb_error_t sb_sw_verify_signature_start
  *  @return Returns SB_SUCCESS if verification has been started. Fails
  *  if the supplied curve or public key is invalid, if the optionally
  *  supplied drbg requires reseeding, or in the case of DRBG failure.
+ *  @memberof sb_sw_context_t
  */
 extern sb_error_t sb_sw_verify_signature_sha256_start
     (sb_sw_context_t context[static 1],
@@ -877,8 +913,9 @@ extern sb_error_t sb_sw_verify_signature_sha256_start
  *  @param [in] context Private context structure allocated by the caller.
  *  @param [out] done Indication of whether computation is done (no further
  *  progress can be made until the finish function is called).
- *  @return On success, \ref SB_SUCCESS. Fails if the context has not been
- *  initialized by a prior to call to \ref sb_sw_verify_signature_start.
+ *  @return On success, ::SB_SUCCESS. Fails if the context has not been
+ *  initialized by a prior to call to ::sb_sw_verify_signature_start.
+ *  @memberof sb_sw_context_t
  */
 extern sb_error_t sb_sw_verify_signature_continue
     (sb_sw_context_t context[static 1],
@@ -891,7 +928,8 @@ extern sb_error_t sb_sw_verify_signature_continue
  *  @return Returns SB_SUCCESS if the signature is valid or
  *  SB_ERROR_SIGNATURE_INVALID exclusively if the signature is invalid. Fails
  *  if the context has not been initialized by a prior to call to
- *  \ref sb_sw_verify_signature_start.
+ *  ::sb_sw_verify_signature_start.
+ *  @memberof sb_sw_context_t
  */
 extern sb_error_t sb_sw_verify_signature_finish
     (sb_sw_context_t context[static 1]);

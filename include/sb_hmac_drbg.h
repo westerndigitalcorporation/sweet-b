@@ -148,9 +148,10 @@
  *  and passing it into HMAC-DRBG functions.
  */
 typedef struct sb_hmac_drbg_state_t {
-    sb_hmac_sha256_state_t hmac;
-    sb_byte_t V[SB_SHA256_SIZE];
-    sb_size_t reseed_counter;
+    /** @privatesection */
+    sb_hmac_sha256_state_t hmac; ///< Internal HMAC state
+    sb_byte_t V[SB_SHA256_SIZE]; ///< Internal state; see SP 800-90A
+    sb_size_t reseed_counter; ///< Used to signal when reseeding is required
 
 #ifdef SB_TEST
     /* This dangerous field causes the DRBG to become "stuck" for the given
@@ -162,7 +163,7 @@ typedef struct sb_hmac_drbg_state_t {
      * without any additional input supplied. */
     _Bool additional_input_required;
 #endif
-} sb_hmac_drbg_state_t;
+} sb_hmac_drbg_state_t; /**< Convenience typedef */
 
 /**
  * Initialize a HMAC-DRBG instance with the given entropy, nonce, and
@@ -173,22 +174,23 @@ typedef struct sb_hmac_drbg_state_t {
  * of entropy such as a hardware random number generator or \c /dev/random
  * device.
  * @param [in] entropy_len Length of entropy input, in bytes.
- * Must be at least \ref SB_HMAC_DRBG_MIN_ENTROPY_INPUT_LENGTH and less than
- * or equal to \ref SB_HMAC_DRBG_MAX_ENTROPY_INPUT_LENGTH.
+ * Must be at least ::SB_HMAC_DRBG_MIN_ENTROPY_INPUT_LENGTH and less than
+ * or equal to ::SB_HMAC_DRBG_MAX_ENTROPY_INPUT_LENGTH.
  * @param [in] nonce Nonce input, usually obtained from a system source of
  * entropy such as a hardware random number generator or \c /dev/random device.
  * @param [in] nonce_len Length of nonce input, in bytes. Must be at least
- * \ref SB_HMAC_DRBG_MIN_NONCE_LENGTH and less than or equal to
- * \ref SB_HMAC_DRBG_MAX_ENTROPY_INPUT_LENGTH.
+ * ::SB_HMAC_DRBG_MIN_NONCE_LENGTH and less than or equal to
+ * ::SB_HMAC_DRBG_MAX_ENTROPY_INPUT_LENGTH.
  * @param [in] personalization Personalization string, used to separate DRBG
  * instances used for different purposes.
  * @param [in] personalization_len Length of personalization string, in bytes.
- * Must be less than or equal to \ref
- * SB_HMAC_DRBG_MAX_PERSONALIZATION_STRING_LENGTH.
- * @return On success, \ref SB_SUCCESS. \ref SB_ERROR_INSUFFICIENT_ENTROPY
+ * Must be less than or equal to
+ * ::SB_HMAC_DRBG_MAX_PERSONALIZATION_STRING_LENGTH.
+ * @return On success, ::SB_SUCCESS. ::SB_ERROR_INSUFFICIENT_ENTROPY
  * if the entropy or nonce lengths were less than the minimum values.
- * \ref SB_ERROR_INPUT_TOO_LARGE if the entropy, nonce, or personalization
+ * ::SB_ERROR_INPUT_TOO_LARGE if the entropy, nonce, or personalization
  * string lengths were greater than or equal to the maximum limits.
+ * @memberof sb_hmac_drbg_state_t
  */
 extern sb_error_t
 sb_hmac_drbg_init(sb_hmac_drbg_state_t drbg[static restrict 1],
@@ -204,24 +206,25 @@ sb_hmac_drbg_init(sb_hmac_drbg_state_t drbg[static restrict 1],
  * additional input.
  *
  * @param [in,out] drbg DRBG instance. Must previously have been initialized
- * by calling \ref sb_hmac_drbg_init.
+ * by calling ::sb_hmac_drbg_init.
  * @param [in] entropy Entropy input, usually obtained from a system source
  * of entropy such as a hardware random number generator or \c /dev/random
  * device.
  * @param [in] entropy_len Length of entropy input, in bytes.
- * Must be at least \ref SB_HMAC_DRBG_MIN_ENTROPY_INPUT_LENGTH and less than
- * or equal to \ref SB_HMAC_DRBG_MAX_ENTROPY_INPUT_LENGTH.
+ * Must be at least ::SB_HMAC_DRBG_MIN_ENTROPY_INPUT_LENGTH and less than
+ * or equal to ::SB_HMAC_DRBG_MAX_ENTROPY_INPUT_LENGTH.
  * @param [in] additional Additional input, typically obtained from the
  * application. May be any value which does not require protection at a
  * higher security strength than that of the DRBG.
  * @param [in] additional_len Length of additional input, in bytes. Must be
- * less than or equal \ref SB_HMAC_DRBG_MAX_ADDITIONAL_INPUT_LENGTH.
- * @return On success, \ref SB_SUCCESS. \ref SB_ERROR_INSUFFICIENT_ENTROPY if
+ * less than or equal ::SB_HMAC_DRBG_MAX_ADDITIONAL_INPUT_LENGTH.
+ * @return On success, ::SB_SUCCESS. ::SB_ERROR_INSUFFICIENT_ENTROPY if
  * the entropy length is less than the minimum value.
- * \ref SB_ERROR_INPUT_TOO_LARGE if the entropy or additional input lengths were
- * greater than or equal to the maximum limits. \ref
- * SB_ERROR_DRBG_UNINITIALIZED if the DRBG has been nullified but not
+ * ::SB_ERROR_INPUT_TOO_LARGE if the entropy or additional input lengths were
+ * greater than or equal to the maximum limits.
+ * ::SB_ERROR_DRBG_UNINITIALIZED if the DRBG has been nullified but not
  * initialized.
+ * @memberof sb_hmac_drbg_state_t
  */
 extern sb_error_t
 sb_hmac_drbg_reseed(sb_hmac_drbg_state_t drbg[static restrict 1],
@@ -237,14 +240,15 @@ sb_hmac_drbg_reseed(sb_hmac_drbg_state_t drbg[static restrict 1],
  * DRBG.
  *
  * @param [in] drbg DRBG instance. Must previously have been initialized
- * by calling \ref sb_hmac_drbg_init.
+ * by calling ::sb_hmac_drbg_init.
  * @param [in] count Number of times the DRBG generate functions will be
  * called in a given batch operation.
- * @return Indicates \ref SB_SUCCESS if the DRBG generate functions may be
+ * @return Indicates ::SB_SUCCESS if the DRBG generate functions may be
  * called \p count times without requiring reseeding, or
- * \ref SB_ERROR_RESEED_REQUIRED if one of the batch of calls will require
- * the DRBG to be reseeded. Also returns \ref SB_ERROR_DRBG_UNINITIALIZED if
+ * ::SB_ERROR_RESEED_REQUIRED if one of the batch of calls will require
+ * the DRBG to be reseeded. Also returns ::SB_ERROR_DRBG_UNINITIALIZED if
  * the DRBG has been nullified but not initialized.
+ * @memberof sb_hmac_drbg_state_t
  */
 extern sb_error_t sb_hmac_drbg_reseed_required(sb_hmac_drbg_state_t const
                                                drbg[static 1], size_t count);
@@ -252,20 +256,21 @@ extern sb_error_t sb_hmac_drbg_reseed_required(sb_hmac_drbg_state_t const
 /**
  * Generate deterministic pseudo-random bits using the DRBG. You are
  * encouraged NOT to use this method and to use
- * \ref sb_hmac_drbg_generate_additional_dummy if no meaningful additional
+ * ::sb_hmac_drbg_generate_additional_dummy if no meaningful additional
  * input is available in your application, as this method may not be
  * backtracking resistant.
  *
  * @param [in,out] drbg DRBG instance. Must previously have been initialized
- * by calling \ref sb_hmac_drbg_init.
+ * by calling ::sb_hmac_drbg_init.
  * @param [out] output DRBG output.
  * @param [in] output_len Length of desired DRBG output. Must be
- * less than or equal to \ref SB_HMAC_DRBG_MAX_BYTES_PER_REQUEST.
- * @return On success, \ref SB_SUCCESS with generated bytes in
- * output. \ref SB_ERROR_REQUEST_TOO_LARGE if the output length is too large.
- * \ref SB_ERROR_RESEED_REQUIRED if the DRBG must be reseeded before
- * generating random output. \ref SB_ERROR_DRBG_UNINITIALIZED if the DRBG
+ * less than or equal to ::SB_HMAC_DRBG_MAX_BYTES_PER_REQUEST.
+ * @return On success, ::SB_SUCCESS with generated bytes in
+ * output. ::SB_ERROR_REQUEST_TOO_LARGE if the output length is too large.
+ * ::SB_ERROR_RESEED_REQUIRED if the DRBG must be reseeded before
+ * generating random output. ::SB_ERROR_DRBG_UNINITIALIZED if the DRBG
  * has been nullified but not initialized.
+ * @memberof sb_hmac_drbg_state_t
  */
 extern sb_error_t
 sb_hmac_drbg_generate(sb_hmac_drbg_state_t drbg[static restrict 1],
@@ -275,7 +280,7 @@ sb_hmac_drbg_generate(sb_hmac_drbg_state_t drbg[static restrict 1],
 /**
  * Generate deterministic pseudo-random bits using the DRBG while supplying
  * "dummy" additional input (currently, one byte with a value of 0). This
- * method SHOULD be used in preference to \ref sb_hmac_drbg_generate, as
+ * method SHOULD be used in preference to ::sb_hmac_drbg_generate, as
  * HMAC-DRBG may not be backtracking resistant if additional input is not
  * supplied. The additional input need not be unknown to the adversary in
  * order to obtain backtracking resistance. See
@@ -283,15 +288,16 @@ sb_hmac_drbg_generate(sb_hmac_drbg_state_t drbg[static restrict 1],
  * of HMAC-DRBG.
  *
  * @param [in,out] drbg DRBG instance. Must previously have been initialized
- * by calling \ref sb_hmac_drbg_init.
+ * by calling ::sb_hmac_drbg_init.
  * @param [out] output DRBG output.
  * @param [in] output_len Length of desired DRBG output. Must be
- * less than or equal to \ref SB_HMAC_DRBG_MAX_BYTES_PER_REQUEST.
- * @return On success, \ref SB_SUCCESS with generated bytes in
- * output. \ref SB_ERROR_REQUEST_TOO_LARGE if the output length is too large.
- * \ref SB_ERROR_RESEED_REQUIRED if the DRBG must be reseeded before
- * generating random output. \ref SB_ERROR_DRBG_UNINITIALIZED if the DRBG
+ * less than or equal to ::SB_HMAC_DRBG_MAX_BYTES_PER_REQUEST.
+ * @return On success, ::SB_SUCCESS with generated bytes in
+ * output. ::SB_ERROR_REQUEST_TOO_LARGE if the output length is too large.
+ * ::SB_ERROR_RESEED_REQUIRED if the DRBG must be reseeded before
+ * generating random output. ::SB_ERROR_DRBG_UNINITIALIZED if the DRBG
  * has been nullified but not initialized.
+ * @memberof sb_hmac_drbg_state_t
  */
 extern sb_error_t
 sb_hmac_drbg_generate_additional_dummy
@@ -302,29 +308,30 @@ sb_hmac_drbg_generate_additional_dummy
 /**
  * Generate deterministic pseudo-random bits using the DRBG. Additional input
  * is provided to the DRBG using this method as a vector of up to
- * \ref SB_HMAC_DRBG_ADD_VECTOR_LEN inputs. Each non-NULL input must have
+ * ::SB_HMAC_DRBG_ADD_VECTOR_LEN inputs. Each non-NULL input must have
  * an associated nonzero length, and at least one input must be present. The
  * output must not alias any part of the additional data.
  *
  * @param [in,out] drbg DRBG instance. Must previously have been initialized
- * by calling \ref sb_hmac_drbg_init.
+ * by calling ::sb_hmac_drbg_init.
  * @param [out] output DRBG output.
  * @param [in] output_len Length of desired DRBG output. Must be
- * less than or equal to \ref SB_HMAC_DRBG_MAX_BYTES_PER_REQUEST.
- * @param [in] additional A vector of \ref SB_HMAC_DRBG_ADD_VECTOR_LEN
+ * less than or equal to ::SB_HMAC_DRBG_MAX_BYTES_PER_REQUEST.
+ * @param [in] additional A vector of ::SB_HMAC_DRBG_ADD_VECTOR_LEN
  * inputs, as pointers to byte strings, with lengths supplied in
  * additional_len.
- * @param [in] additional_len A vector of \ref SB_HMAC_DRBG_ADD_VECTOR_LEN
+ * @param [in] additional_len A vector of ::SB_HMAC_DRBG_ADD_VECTOR_LEN
  * additional input lengths, corresponding to the inputs in the additional
  * parameter.
- * @return On success, \ref SB_SUCCESS with generated bytes in output.
- * \ref SB_ERROR_REQUEST_TOO_LARGE if the output length is too large.
- * \ref SB_ERROR_INPUT_TOO_LARGE if the sum of the additional input lengths is
- * greater than \ref SB_HMAC_DRBG_MAX_ADDITIONAL_INPUT_LENGTH.
- * \ref SB_ERROR_ADDITIONAL_INPUT_REQUIRED if no additional input is present.
- * \ref SB_ERROR_RESEED_REQUIRED if the DRBG must be reseeded before
- * generating random output. \ref SB_ERROR_DRBG_UNINITIALIZED if the DRBG
+ * @return On success, ::SB_SUCCESS with generated bytes in output.
+ * ::SB_ERROR_REQUEST_TOO_LARGE if the output length is too large.
+ * ::SB_ERROR_INPUT_TOO_LARGE if the sum of the additional input lengths is
+ * greater than ::SB_HMAC_DRBG_MAX_ADDITIONAL_INPUT_LENGTH.
+ * ::SB_ERROR_ADDITIONAL_INPUT_REQUIRED if no additional input is present.
+ * ::SB_ERROR_RESEED_REQUIRED if the DRBG must be reseeded before
+ * generating random output. ::SB_ERROR_DRBG_UNINITIALIZED if the DRBG
  * has been nullified but not initialized.
+ * @memberof sb_hmac_drbg_state_t
  */
 extern sb_error_t sb_hmac_drbg_generate_additional_vec
     (sb_hmac_drbg_state_t drbg[static restrict 1],
