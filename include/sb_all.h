@@ -50,6 +50,16 @@
  *
  * Copyright (c) 2020 Western Digital Corporation or its affiliates. Sweet B
  * is provided under the terms of the included \ref License.
+ * 
+ * Each Sweet B module defines a context structure and a set of functions that
+ * operate on the structure. Documentation for these functions appears with
+ * the structure that they operate on:
+ *
+ * - sb_sha256_state_t - SHA256 operations
+ * - sb_hmac_sha256_state_t - HMAC-SHA256 operations
+ * - sb_hkdf_state_t - HKDF and KBKDF operations
+ * - sb_hmac_drbg_state_t - HMAC-DRBG operations
+ * - sb_sw_context_t - Short Weierstrass curve operations
  *
  */
 
