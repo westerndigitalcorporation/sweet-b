@@ -323,8 +323,8 @@ extern sb_error_t sb_sw_compute_public_key_finish
  *  valid scalar.
  *  @param [in] e Endianness of the private key. Use big endian for
  *  most situations.
- *  @return Returns SB_SUCCESS if the supplied private key is valid or
- *  SB_ERROR_PRIVATE_KEY_INVALID exclusively if the key supplied is invalid.
+ *  @return Returns ::SB_SUCCESS if the supplied private key is valid or
+ *  ::SB_ERROR_PRIVATE_KEY_INVALID exclusively if the key supplied is invalid.
  *  Fails if the curve supplied is invalid.
  *  @memberof sb_sw_context_t
  */
@@ -343,8 +343,8 @@ extern sb_error_t sb_sw_valid_private_key(sb_sw_context_t context[static 1],
  *  @param [in] curve Curve on which the supplied public key supposedly lies.
  *  @param [in] e Endianness of the public key. Use big endian for
  *  most situations.
- *  @return Returns SB_SUCCESS if the supplied public key is valid or
- *  SB_ERROR_INVALID_PUBLIC_KEY exclusively if the key supplied is invalid.
+ *  @return Returns ::SB_SUCCESS if the supplied public key is valid or
+ *  ::SB_ERROR_PUBLIC_KEY_INVALID if the key supplied is invalid.
  *  Fails if the curve supplied is invalid.
  *  @memberof sb_sw_context_t
  */
@@ -366,8 +366,8 @@ extern sb_error_t sb_sw_valid_public_key(sb_sw_context_t context[static 1],
  *  @param [in] e Endianness of the public key. Use big endian for
  *  most situations.
  *
- *  @return Returns SB_SUCCESS if the supplied public key is valid or
- *  SB_ERROR_INVALID_PUBLIC_KEY exclusively if the key supplied is invalid.
+ *  @return Returns ::SB_SUCCESS if the supplied public key is valid or
+ *  ::SB_ERROR_PUBLIC_KEY_INVALID if the key supplied is invalid.
  *  Fails if the curve supplied is invalid.
  *  @memberof sb_sw_context_t
  */
@@ -391,8 +391,8 @@ extern sb_error_t sb_sw_compress_public_key(sb_sw_context_t context[static 1],
  *  @param [in] e Endianness of the public key. Use big endian for
  *  most situations.
  *
- *  @return Returns SB_SUCCESS if the supplied public key is valid or
- *  SB_ERROR_INVALID_PUBLIC_KEY exclusively if the key supplied is invalid.
+ *  @return Returns ::SB_SUCCESS if the supplied public key is valid or
+ *  ::SB_ERROR_PUBLIC_KEY_INVALID if the key supplied is invalid.
  *  Fails if the curve supplied is invalid.
  *  @memberof sb_sw_context_t
  */
@@ -796,8 +796,8 @@ extern sb_error_t sb_sw_composite_sign_unwrap_signature
  *  @param [in] curve Curve on which to generate the signature.
  *  @param [in] e Endianness of the public key, message digest, and
  *  signature. Use big endian for most situations.
- *  @return Returns SB_SUCCESS if the signature is valid or
- *  SB_ERROR_SIGNATURE_INVALID exclusively if the signature is invalid. Fails
+ *  @return Returns ::SB_SUCCESS if the signature is valid or
+ *  ::SB_ERROR_SIGNATURE_INVALID exclusively if the signature is invalid. Fails
  *  if the supplied curve or public key is invalid, if the optionally
  *  supplied drbg requires reseeding, or in the case of DRBG failure.
  *  @memberof sb_sw_context_t
@@ -835,8 +835,8 @@ extern sb_error_t sb_sw_verify_signature_sha256
  *  @param [in] curve Curve on which to generate the signature.
  *  @param [in] e Endianness of the public key, message digest, and
  *  signature. Use big endian for most situations.
- *  @return Returns SB_SUCCESS if the signature is valid or
- *  SB_ERROR_SIGNATURE_INVALID exclusively if the signature is invalid. Fails
+ *  @return Returns ::SB_SUCCESS if the signature is valid or
+ *  ::SB_ERROR_SIGNATURE_INVALID exclusively if the signature is invalid. Fails
  *  if the supplied curve or public key is invalid, if the optionally
  *  supplied drbg requires reseeding, or in the case of DRBG failure.
  *  @memberof sb_sw_context_t
@@ -849,8 +849,8 @@ extern sb_error_t sb_sw_verify_signature(sb_sw_context_t context[static 1],
                                          sb_sw_curve_id_t curve,
                                          sb_data_endian_t e);
 
-/** Begins verifying a supplied signature of a given message digest with a given
- *  public key. See ::sb_sw_verify_signature for notes on how to use this
+/** Begins verifying a supplied signature of a given message digest with a
+ *  given public key. See ::sb_sw_verify_signature for notes on how to use this
  *  method.
  *
  *  @param [in] context Private context structure allocated by the caller.
@@ -864,7 +864,7 @@ extern sb_error_t sb_sw_verify_signature(sb_sw_context_t context[static 1],
  *  @param [in] curve Curve on which to generate the signature.
  *  @param [in] e Endianness of the public key, message digest, and
  *  signature. Use big endian for most situations.
- *  @return Returns SB_SUCCESS if verification has been started. Fails
+ *  @return Returns ::SB_SUCCESS if verification has been started. Fails
  *  if the supplied curve or public key is invalid, if the optionally
  *  supplied drbg requires reseeding, or in the case of DRBG failure.
  *  @memberof sb_sw_context_t
@@ -893,7 +893,7 @@ extern sb_error_t sb_sw_verify_signature_start
  *  @param [in] curve Curve on which to generate the signature.
  *  @param [in] e Endianness of the public key, message digest, and
  *  signature. Use big endian for most situations.
- *  @return Returns SB_SUCCESS if verification has been started. Fails
+ *  @return Returns ::SB_SUCCESS if verification has been started. Fails
  *  if the supplied curve or public key is invalid, if the optionally
  *  supplied drbg requires reseeding, or in the case of DRBG failure.
  *  @memberof sb_sw_context_t
@@ -925,8 +925,8 @@ extern sb_error_t sb_sw_verify_signature_continue
  *  given public key.
  *
  *  @param [in] context Private context structure allocated by the caller.
- *  @return Returns SB_SUCCESS if the signature is valid or
- *  SB_ERROR_SIGNATURE_INVALID exclusively if the signature is invalid. Fails
+ *  @return Returns ::SB_SUCCESS if the signature is valid or
+ *  ::SB_ERROR_SIGNATURE_INVALID exclusively if the signature is invalid. Fails
  *  if the context has not been initialized by a prior to call to
  *  ::sb_sw_verify_signature_start.
  *  @memberof sb_sw_context_t

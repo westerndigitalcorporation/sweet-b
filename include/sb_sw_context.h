@@ -224,7 +224,7 @@ typedef enum sb_sw_point_mult_op_stage_t {
 
 /** @enum sb_sw_sign_op_stage_t
   * @brief Current stage of the signing operation. Starts from
-    ::SB_SW_POINT_MULT_OP_DONE */
+    sb_sw_point_mult_op_stage_t::SB_SW_POINT_MULT_OP_DONE */
 
 typedef enum sb_sw_sign_op_stage_t {
     /// Per-message secret inversion
@@ -257,9 +257,9 @@ typedef enum sb_sw_verify_op_stage_t {
 /** @typedef sb_sw_op_stage_t
  *  @brief Current operation stage.
  *  May be one of:
- *  ::sb_sw_point_mult_op_stage_t
- *  ::sb_sw_sign_op_stage_t
- *  ::sb_sw_verify_op_stage_t
+ *  - sb_sw_point_mult_op_stage_t
+ *  - sb_sw_sign_op_stage_t
+ *  - sb_sw_verify_op_stage_t
  */
 typedef uint32_t sb_sw_op_stage_t;
 
