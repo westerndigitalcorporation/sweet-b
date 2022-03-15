@@ -8,7 +8,7 @@
 #
 # https://github.com/westerndigitalcorporation/sweet-b
 #
-# Copyright (c) 2020 Western Digital Corporation or its affiliates.
+# Copyright (c) 2020-2021 Western Digital Corporation or its affiliates.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions are met:
@@ -76,7 +76,10 @@ set(SB_PRIVATE_HEADERS
         src/sb_test_list.h)
 
 set(SB_ASM_SOURCES)
-set(SB_FE_ASM "0" CACHE STRING "")
+
+if(NOT DEFINED SB_FE_ASM)
+    set(SB_FE_ASM "0" CACHE STRING "")
+endif()
 
 set(SB_SOURCES
         ${SB_PUBLIC_HEADERS}
@@ -91,50 +94,70 @@ set(SB_SOURCES
         src/sb_fe.c
         src/sb_sw_lib.c)
 
-set_property(SOURCE src/sb_test.c APPEND PROPERTY OBJECT_DEPENDS
-        "${CMAKE_CURRENT_SOURCE_DIR}/src/sb_test_list.h")
+if(NOT DEFINED SB_TEST)
+    option(SB_TEST "" ON)
+endif()
 
-add_executable(sb_test ${SB_SOURCES} src/sb_test.c src/sb_test_cavp.c)
+if(SB_TEST)
+    set_property(SOURCE src/sb_test.c APPEND PROPERTY OBJECT_DEPENDS
+            "${CMAKE_CURRENT_SOURCE_DIR}/src/sb_test_list.h")
 
-# 16x16->32 operations are most likely to accidentally trigger UB if there is
-# a missing cast from implicitly promoted int to uint32_t
+    add_executable(sb_test ${SB_SOURCES} src/sb_test.c src/sb_test_cavp.c)
 
-# If you update the SB_HMAC_DRBG options here to make unit tests pass, you
-# must also update the checks in sb_hmac_drbg.h
+    # 16x16->32 operations are most likely to accidentally trigger UB if there is
+    # a missing cast from implicitly promoted int to uint32_t
 
-set(SB_TEST_WORD_SIZE "2" CACHE STRING "")
-set(SB_TEST_VERIFY_QR "1" CACHE STRING "")
+    # If you update the SB_HMAC_DRBG options here to make unit tests pass, you
+    # must also update the checks in sb_hmac_drbg.h
 
-target_compile_definitions(sb_test PRIVATE
-        SB_TEST
-        SB_WORD_SIZE=${SB_TEST_WORD_SIZE}
-        SB_FE_VERIFY_QR=${SB_TEST_VERIFY_QR}
-        SB_FE_ASM=${SB_FE_ASM}
-        SB_DEBUG_ASSERTS
-        SB_UNROLL=3
-        SB_HMAC_DRBG_RESEED_INTERVAL=18
-        SB_HMAC_DRBG_MAX_BYTES_PER_REQUEST=128
-        SB_HMAC_DRBG_MAX_ENTROPY_INPUT_LENGTH=256)
+    if(NOT DEFINED SB_TEST_WORD_SIZE)
+        set(SB_TEST_WORD_SIZE "2" CACHE STRING "")
+    endif()
 
-enable_testing()
+    if(NOT DEFINED SB_TEST_VERIFY_QR)
+        set(SB_TEST_VERIFY_QR "1" CACHE STRING "")
+    endif()
 
-add_test(NAME sb_test
-         CONFIGURATIONS Debug
-         WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
-         COMMAND sb_test)
+    target_compile_definitions(sb_test PRIVATE
+            SB_TEST
+            SB_WORD_SIZE=${SB_TEST_WORD_SIZE}
+            SB_FE_VERIFY_QR=${SB_TEST_VERIFY_QR}
+            SB_FE_ASM=${SB_FE_ASM}
+            SB_DEBUG_ASSERTS
+            SB_UNROLL=3
+            SB_HMAC_DRBG_RESEED_INTERVAL=18
+            SB_HMAC_DRBG_MAX_BYTES_PER_REQUEST=128
+            SB_HMAC_DRBG_MAX_ENTROPY_INPUT_LENGTH=256)
 
-add_library(sweet_b SHARED ${SB_SOURCES})
+    enable_testing()
 
-set(SB_LIBRARY_DEFINES "" CACHE STRING "")
+    add_test(NAME sb_test
+            CONFIGURATIONS Debug
+            WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
+            COMMAND sb_test)
+endif(SB_TEST)
+
+if(NOT DEFINED BUILD_SHARED_LIBS)
+    option(BUILD_SHARED_LIBS "" ON)
+endif()
+
+add_library(sweet_b ${SB_SOURCES})
+
+if(NOT DEFINED SB_LIBRARY_DEFINES)
+    set(SB_LIBRARY_DEFINES "" CACHE STRING "")
+endif()
 
 target_compile_definitions(sweet_b PRIVATE
         ${SB_LIBRARY_DEFINES}
         SB_FE_ASM=${SB_FE_ASM})
+
+target_include_directories(sweet_b INTERFACE
+        $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>)
 
 set_target_properties(sweet_b PROPERTIES
         VERSION ${PROJECT_VERSION}
         PUBLIC_HEADER "${SB_PUBLIC_HEADERS}")
 
 install(TARGETS sweet_b
-        LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
+        DESTINATION ${CMAKE_INSTALL_LIBDIR}
         PUBLIC_HEADER DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})
