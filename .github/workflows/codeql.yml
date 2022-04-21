@@ -1,5 +1,5 @@
 #
-# .gitignore: what it says on the tin
+# build-and-test.yml: CodeQL support for Sweet B
 #
 # SPDX-License-Identifier: BSD-3-Clause
 #
@@ -8,7 +8,7 @@
 #
 # https://github.com/westerndigitalcorporation/sweet-b
 #
-# Copyright (c) 2020 Western Digital Corporation or its affiliates.
+# Copyright (c) 2022 Western Digital Corporation or its affiliates.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions are met:
@@ -37,12 +37,30 @@
 # POSSIBILITY OF SUCH DAMAGE.
 #
 
-.idea
-sweet_b
-*.o
-cmake-build-*
-callgrind.out.*
-*~
-*.dSYM
-.vscode
-sb_test
+name: CodeQL
+
+on: [push, pull_request]
+
+jobs:
+  analyze:
+    name: Analyze
+    runs-on: ubuntu-latest
+    permissions:
+      actions: read
+      contents: read
+      security-events: write
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v3
+
+    - name: Initialize CodeQL
+      uses: github/codeql-action/init@v2
+      with:
+        languages: cpp
+
+    - name: Autobuild
+      uses: github/codeql-action/autobuild@v2
+
+    - name: Perform CodeQL Analysis
+      uses: github/codeql-action/analyze@v2
