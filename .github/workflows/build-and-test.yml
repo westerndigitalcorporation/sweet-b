@@ -1,5 +1,5 @@
 #
-# .travis.yml: Travis CI support
+# build-and-test.yml: GitHub Action for building and testing
 #
 # SPDX-License-Identifier: BSD-3-Clause
 #
@@ -8,7 +8,7 @@
 #
 # https://github.com/westerndigitalcorporation/sweet-b
 #
-# Copyright (c) 2020 Western Digital Corporation or its affiliates.
+# Copyright (c) 2022 Western Digital Corporation or its affiliates.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions are met:
@@ -37,53 +37,38 @@
 # POSSIBILITY OF SUCH DAMAGE.
 #
 
-language: c
+name: Build and Test
 
-matrix:
-  include:
-    - os: linux
-      compiler: gcc
-      dist: trusty
-      addons:
-        apt:
-          sources:
-            - ubuntu-toolchain-r-test
-          packages:
-            - gcc-7
-            - cmake3
-      env:
-        - C_COMPILER=gcc-7
+on: [push, pull_request]
 
-    - os: linux
-      compiler: clang
-      dist: trusty
-      env:
-        - ASAN_OPTIONS=detect_leaks=0
-        - C_COMPILER=clang
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
 
-    - os: linux
-      compiler: gcc
-      dist: trusty
-      addons:
-        apt:
-          packages:
-            - gcc-arm-linux-gnueabihf
-            - libc6-dev-armhf-cross
-            - qemu-user
-      env:
-        - CMAKE_EXTRA="-DCMAKE_TOOLCHAIN_FILE=arm.cmake"
-        - RUN_WRAP=qemu-arm
+    strategy:
+      fail-fast: true
+      matrix:
+        configuration: [Debug, Release]
+        processor: [default, arm]
+        include:
+          - processor: default
+            toolchain-option: "-DCMAKE_C_COMPILER=clang"
+          - processor: arm
+            toolchain-option: "-DCMAKE_TOOLCHAIN_FILE=arm.cmake"
+            run-wrap: qemu-arm
+            packages: gcc-arm-linux-gnueabihf libc6-dev-armhf-cross qemu-user
 
-#    - os: osx
-#      compiler: clang
-#      osx_image: xcode9
+    steps:
+    - uses: actions/checkout@v3
 
-before_script:
-  - mkdir cmake-build-debug
-  - cd cmake-build-debug
-  - cmake .. -DCMAKE_BUILD_TYPE=Debug -DCMAKE_C_COMPILER=$C_COMPILER $CMAKE_EXTRA
+    - name: system-packages
+      if: ${{ matrix.packages != '' }}
+      run: sudo apt install -y ${{ matrix.packages }}
 
-script:
-  - make VERBOSE=1
-  - cd ..
-  - $RUN_WRAP ./cmake-build-debug/sb_test
+    - name: build
+      run: |
+        cmake -Bcmake-build -DCMAKE_BUILD_TYPE=${{ matrix.configuration }} ${{ matrix.toolchain-option }} -DSB_TEST=1
+        make -Ccmake-build VERBOSE=1
+    
+    - name: test
+      run: ${{matrix.run-wrap}} ./cmake-build/sb_test
