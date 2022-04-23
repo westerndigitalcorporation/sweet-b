@@ -1310,8 +1310,6 @@ static _Bool test_small_r_signature(sb_sw_curve_id_t curve)
         t++;
         SB_TEST_ASSERT(t < 1024); // we should find a candidate on any curve pretty quickly
     } while (1);
-
-    return 0;
 }
 
 // When verifying signatures it is possible to have a signature that won't
