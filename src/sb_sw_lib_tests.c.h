@@ -1279,6 +1279,7 @@ static _Bool test_small_r_signature(sb_sw_curve_id_t curve)
     sb_sw_public_t keys[4];
     sb_sw_context_t m;
     sb_sw_curve_t const* s;
+    size_t t = 0;
 
     SB_TEST_ASSERT_SUCCESS(sb_sw_curve_from_id(&s, curve));
 
@@ -1305,6 +1306,9 @@ static _Bool test_small_r_signature(sb_sw_curve_id_t curve)
         }
 
         sb_fe_add(&candidate_r, &candidate_r, &SB_FE_ONE);
+
+        t++;
+        SB_TEST_ASSERT(t < 1024); // we should find a candidate on any curve pretty quickly
     } while (1);
 }
 
