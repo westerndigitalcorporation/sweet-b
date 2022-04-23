@@ -1308,9 +1308,9 @@ static _Bool test_small_r_signature(sb_sw_curve_id_t curve)
         sb_fe_add(&candidate_r, &candidate_r, &SB_FE_ONE);
 
         t++;
-    } while (t < 1024); // we should find a candidate on any curve pretty quickly
+        SB_TEST_ASSERT(t < 1024); // we should find a candidate on any curve pretty quickly
+    } while (1);
 
-    // We didn't find a small r
     return 0;
 }
 
