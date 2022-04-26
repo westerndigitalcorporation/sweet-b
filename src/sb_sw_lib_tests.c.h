@@ -1679,7 +1679,7 @@ _Bool sb_test_sw_invalid_sig_p256(void) {
     sb_byte_t zeros[SB_ELEM_BYTES] = {0};
 
     sb_byte_t n[SB_ELEM_BYTES];
-    sb_sw_curve_t* s = NULL;
+    const sb_sw_curve_t* s = NULL;
     SB_TEST_ASSERT_SUCCESS(
         sb_sw_curve_from_id(&s, SB_SW_CURVE_P256));
 
@@ -1699,7 +1699,7 @@ _Bool sb_test_sw_invalid_sig_secp256k1(void) {
     sb_byte_t zeros[SB_ELEM_BYTES] = {0};
 
     sb_byte_t n[SB_ELEM_BYTES];
-    sb_sw_curve_t* s = NULL;
+    const sb_sw_curve_t* s = NULL;
     SB_TEST_ASSERT_SUCCESS(
         sb_sw_curve_from_id(&s, SB_SW_CURVE_SECP256K1));
 
