@@ -1620,6 +1620,65 @@ _Bool sb_test_sw_invalid_scalar(void)
     return 1;
 }
 
+// Test that sweet-b is not vulnerable to the "Psychic Paper" attack.
+// More specifically, verify that for some signature (r, s) if r or s = 0
+// signature verification quits out early.
+static _Bool sb_test_sign_zero_r_s(const sb_sw_curve_id_t c,
+                                   const sb_data_endian_t e)
+{
+    sb_sw_signature_t s1, s2;
+    sb_sw_context_t ct;
+    sb_hmac_drbg_state_t drbg;
+
+    NULL_DRBG_INIT(&drbg);
+
+    sb_sw_private_t priv;
+    sb_sw_public_t pub;
+    
+    // Generate a valid public key
+    SB_TEST_ASSERT_SUCCESS(sb_sw_generate_private_key(&ct, &priv, &drbg, c, e));
+    SB_TEST_ASSERT_SUCCESS(sb_sw_compute_public_key(&ct, &pub, &priv, &drbg, c, e));
+
+    // Generate two random signatures. We don't care that it's invalid.
+    SB_TEST_ASSERT_SUCCESS(sb_hmac_drbg_generate_additional_dummy
+                                    (&drbg, s1.bytes, sizeof(s1.bytes)));
+    SB_TEST_ASSERT_SUCCESS(sb_hmac_drbg_generate_additional_dummy
+                                    (&drbg, s2.bytes, sizeof(s2.bytes)));
+
+    // Turn half the signature to 0 and make sure we get an error 
+    memset(s1.bytes, 0, sizeof(sb_single_t));
+    SB_TEST_ASSERT_ERROR(
+        sb_sw_verify_signature(&ct, &s1, &pub, 
+                               &TEST_MESSAGE_PKR, &drbg, c, e), 
+        SB_ERROR_SIGNATURE_INVALID);
+
+    // Test with a signature with the other half as 0 and 
+    // make sure we still get an error
+    memset(s2.bytes + sizeof(sb_single_t), 0, sizeof(sb_single_t));
+    SB_TEST_ASSERT_ERROR(
+        sb_sw_verify_signature(&ct, &s2, &pub, 
+                              &TEST_MESSAGE_PKR, &drbg, c, e), 
+        SB_ERROR_SIGNATURE_INVALID);
+
+    // Make the whole signature 0 and make sure we get an error
+    memset(s2.bytes, 0, sizeof(sb_sw_signature_t));
+    SB_TEST_ASSERT_ERROR(
+        sb_sw_verify_signature(&ct, &s2, &pub, 
+                               &TEST_MESSAGE_PKR, &drbg, c, e), 
+        SB_ERROR_SIGNATURE_INVALID);
+
+    return 1;
+}
+
+_Bool sb_test_sw_sign_zero_p256(void) {
+    return sb_test_sign_zero_r_s(SB_SW_CURVE_P256, SB_DATA_ENDIAN_BIG);
+}
+
+_Bool sb_test_sw_sign_zero_secp256k1(void) {
+    return sb_test_sign_zero_r_s(SB_SW_CURVE_SECP256K1, SB_DATA_ENDIAN_LITTLE);
+}
+
+
 /// Randomized tests:
 
 // A randomized test of the composite key wrapping and unwrapping methods.
