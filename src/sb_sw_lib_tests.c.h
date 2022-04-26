@@ -1621,9 +1621,9 @@ _Bool sb_test_sw_invalid_scalar(void)
 }
 
 // Test that sweet-b is not vulnerable to the "Psychic Paper" attack.
-// More specifically, verify that for some signature (r, s) if r or s = 0
+// More specifically, verify that for some signature (r, s) if r or s = 0 or N
 // signature verification returns invalid.
-static _Bool sb_test_invalid_sig(const sb_byte_t invalid[static const 1],
+static _Bool sb_test_invalid_sig(const sb_byte_t invalid[static const SB_ELEM_BYTES],
                                  const sb_sw_curve_id_t c,
                                  const sb_data_endian_t e)
 {
@@ -1648,14 +1648,14 @@ static _Bool sb_test_invalid_sig(const sb_byte_t invalid[static const 1],
     SB_TEST_ASSERT_SUCCESS(sb_hmac_drbg_generate_additional_dummy
                                     (&drbg, s2.bytes, sizeof(s2.bytes)));
 
-    // Set half the signature to 0 and make sure we get an error 
+    // Set half the signature to 0 or N and make sure we get an error 
     memcpy(s1.bytes, invalid, SB_ELEM_BYTES);
     SB_TEST_ASSERT_ERROR(
         sb_sw_verify_signature(&ct, &s1, &pub, 
                                &TEST_MESSAGE_PKR, &drbg, c, e), 
         SB_ERROR_SIGNATURE_INVALID);
 
-    // Test with a signature with the other half as 0 and 
+    // Test with a signature with the other half as 0 or N and 
     // make sure we still get an error
     memcpy(s2.bytes + SB_ELEM_BYTES, invalid, SB_ELEM_BYTES);
     SB_TEST_ASSERT_ERROR(
@@ -1663,7 +1663,7 @@ static _Bool sb_test_invalid_sig(const sb_byte_t invalid[static const 1],
                               &TEST_MESSAGE_PKR, &drbg, c, e), 
         SB_ERROR_SIGNATURE_INVALID);
 
-    // Make the whole signature 0 and make sure we get an error
+    // Make both r and s 0 or N and make sure we get an error
     memcpy(s2.bytes, invalid, SB_ELEM_BYTES);
     SB_TEST_ASSERT_ERROR(
         sb_sw_verify_signature(&ct, &s2, &pub, 
