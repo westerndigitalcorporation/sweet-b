@@ -100,8 +100,8 @@ SB_DEFINE_TEST(pk_recovery_james);
 SB_DEFINE_TEST(candidates);
 SB_DEFINE_TEST(sw_early_errors);
 SB_DEFINE_TEST(sw_invalid_scalar);
-SB_DEFINE_TEST(sw_sign_zero_p256);
-SB_DEFINE_TEST(sw_sign_zero_secp256k1);
+SB_DEFINE_TEST(sw_invalid_sig_p256);
+SB_DEFINE_TEST(sw_invalid_sig_secp256k1);
 // Randomized tests for expected functionality.
 // Each takes a drbg and at each iteration generates a keypair to run tests.
 SB_DEFINE_TEST(composite_key_wrap_p256);
