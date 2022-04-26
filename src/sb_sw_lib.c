@@ -1086,7 +1086,9 @@ static _Bool sb_sw_verify_continue(sb_sw_context_t v[static const 1],
 
     switch (state.stage) {
         case SB_SW_VERIFY_OP_STAGE_INV_S: {
-            // A signature with either r or s as 0 or N is invalid
+            // A signature with either r or s as 0 or N is invalid;
+            // see `sb_test_invalid_sig` for a unit test of this
+            // check.
             state.res &= sb_sw_scalar_validate(VERIFY_QR(v), s);
             state.res &= sb_sw_scalar_validate(VERIFY_QS(v), s);
             sb_fe_mod_reduce(VERIFY_MESSAGE(v), s->n);
