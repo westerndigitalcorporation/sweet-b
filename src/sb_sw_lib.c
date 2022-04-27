@@ -938,23 +938,22 @@ sb_sw_point_validate(sb_sw_context_t c[static const 1],
 }
 
 static sb_word_t
-sb_sw_point_decompress(sb_fe_pair_t point[static const 1],
+sb_sw_point_decompress(sb_sw_context_t c[static const 1],
                        const sb_word_t sign,
-                       sb_sw_context_t c[static const 1],
                        const sb_sw_curve_t s[static const 1])
 {
     /* First validate the X coordinate of the point. */
     sb_word_t r = 1;
 
     // 5.6.2.3.4 step 2: unreduced points are not valid.
-    r &= sb_fe_lt(&point->x, &s->p->p);
+    r &= sb_fe_lt(&MULT_POINT(c)->x, &s->p->p);
 
     // The input X value may be 0 on some curves (such as NIST P-256).
     // The modular quasi-reduction routine will change this to P.
-    sb_fe_mod_reduce(&point->x, s->p);
+    sb_fe_mod_reduce(&MULT_POINT(c)->x, s->p);
 
     // Compute y^2 = x^3 + ax + b in C_Y1(c)
-    *C_X1(c) = point->x;
+    *C_X1(c) = MULT_POINT(c)->x;
     sb_sw_curve_y2(c, s);
 
     // Compute the candidate square root
@@ -965,7 +964,7 @@ sb_sw_point_decompress(sb_fe_pair_t point[static const 1],
     sb_fe_mod_negate(C_T5(c), C_Y1(c), s->p);
     sb_fe_ctswap(sign_mismatch, C_Y1(c), C_T5(c));
 
-    point->y = *C_Y1(c);
+    MULT_POINT(c)->y = *C_Y1(c);
 
     return r;
 }
@@ -1724,8 +1723,7 @@ sb_error_t sb_sw_decompress_public_key
 
     sb_fe_from_bytes(MULT_POINT_X(ctx), compressed->bytes, e);
     err |= SB_ERROR_IF(PUBLIC_KEY_INVALID,
-                       !sb_sw_point_decompress(MULT_POINT(ctx),
-                                               (sb_word_t) sign, ctx, s));
+                       !sb_sw_point_decompress(ctx, (sb_word_t) sign, s));
     SB_RETURN_ERRORS(err, ctx);
 
     sb_fe_to_bytes(public->bytes, MULT_POINT_X(ctx), e);
