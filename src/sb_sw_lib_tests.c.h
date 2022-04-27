@@ -1179,7 +1179,7 @@ static size_t verify_recover_public_key(sb_sw_public_t keys[4],
 
     extract_sig_components(&m, sig, message, s, e);
 
-    if (sb_sw_point_decompress(MULT_POINT(&m), 0, &m, s)) {
+    if (sb_sw_point_decompress(&m, 0, s)) {
 
         pk_recovery(&m, s);
 
@@ -1191,7 +1191,7 @@ static size_t verify_recover_public_key(sb_sw_public_t keys[4],
         // re-extract scalars...
         extract_sig_components(&m, sig, message, s, e);
 
-        sb_sw_point_decompress(MULT_POINT(&m), 1, &m, s);
+        sb_sw_point_decompress(&m, 1, s);
 
         pk_recovery(&m, s);
 
@@ -1212,7 +1212,7 @@ static size_t verify_recover_public_key(sb_sw_public_t keys[4],
         sb_fe_mod_add(MULT_POINT_X(&m), MULT_POINT_X(&m), C_T5(&m), s->p); //
         // x = x + N
 
-        if (sb_sw_point_decompress(MULT_POINT(&m), 0, &m, s)) {
+        if (sb_sw_point_decompress(&m, 0, s)) {
 
             pk_recovery(&m, s);
 
@@ -1231,7 +1231,7 @@ static size_t verify_recover_public_key(sb_sw_public_t keys[4],
                           s->p); //
             // x = x + N
 
-            sb_sw_point_decompress(MULT_POINT(&m), 1, &m, s);
+            sb_sw_point_decompress(&m, 1, s);
 
             pk_recovery(&m, s);
 
