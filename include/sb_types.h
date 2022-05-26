@@ -62,8 +62,20 @@
  * set in terms of bytes. The default value is 4, but you should set this as
  * appropriate for the resources of your processor. For instance, if your
  * processor features a multiplier that can produce a 64-bit result from two
- * 32-bit operands, then set ::SB_WORD_SIZE to 4. */
+ * 32-bit operands, then set ::SB_WORD_SIZE to 4. By default, ::SB_WORD_SIZE
+ * is set to the size (in bytes) of uintptr_t.
+ */
+
+#if UINTPTR_MAX == UINT64_MAX
+#define SB_WORD_SIZE 8
+#elif UINTPTR_MAX == UINT32_MAX
 #define SB_WORD_SIZE 4
+#elif UINTPTR_MAX == UINT16_MAX
+#define SB_WORD_SIZE 2
+#else
+/* What kind of system is this? */
+#define SB_WORD_SIZE 1
+#endif
 #endif
 
 /** @brief Used to indicate "a bunch of bytes" instead of "an 8-bit integer
