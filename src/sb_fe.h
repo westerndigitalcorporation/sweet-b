@@ -46,6 +46,7 @@
 #include <stdint.h>
 #include <stddef.h>
 #include "sb_types.h"
+#include "sb_time.h"
 
 /** @name Field element implementation
   *

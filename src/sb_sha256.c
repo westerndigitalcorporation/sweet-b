@@ -203,6 +203,10 @@ void sb_sha256_update(sb_sha256_state_t sha[static const restrict 1],
                       const sb_byte_t* restrict input,
                       size_t len)
 {
+    // Indicate that this method's runtime should not depend on
+    // the value of input
+    sb_poison_input(input, len);
+
     while (len > 0) {
         const size_t fill = sha->total_bytes % SB_SHA256_BLOCK_SIZE;
         const size_t remaining = SB_SHA256_BLOCK_SIZE - fill;
@@ -392,7 +396,6 @@ _Bool sb_test_sha256_cavp_file(const char* file)
                        SB_TEST_STRINGIFY(SB_SHA256_SIZE)
                        "]"));
     while (sb_test_fetch_next_int(tests, &len)) {
-        sb_test_progress(count, 0);
         count++;
 
         SB_TEST_ASSERT(!(len & 0x7u));
@@ -418,8 +421,6 @@ _Bool sb_test_sha256_cavp_file(const char* file)
         sb_sha256_finish(&ctx, hash_out);
         SB_TEST_ASSERT_EQUAL(hash.buf[0], hash_out);
     }
-
-    sb_test_progress(count, 1);
 
     sb_test_buf_free(&message);
     sb_test_buf_free(&hash);
@@ -449,8 +450,6 @@ _Bool sb_test_sha256_cavp_file_monte(const char* file)
     while (sb_test_fetch_next_int(tests, &count)) {
         SB_TEST_ASSERT(count == i);
         i++;
-
-        sb_test_progress(count, 0);
 
         SB_TEST_ASSERT(sb_test_fetch_next_value(tests, &hash));
         SB_TEST_BYTES_RAW(&hash);
@@ -485,8 +484,6 @@ _Bool sb_test_sha256_cavp_file_monte(const char* file)
 
         SB_TEST_ASSERT_EQUAL(hash.buf[0], md[3]);
     }
-
-    sb_test_progress(count, 1);
 
     sb_test_buf_free(&seed);
     sb_test_buf_free(&hash);

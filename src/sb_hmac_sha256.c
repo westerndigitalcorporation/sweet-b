@@ -41,6 +41,7 @@
 
 #include "sb_test.h"
 #include "sb_hmac_sha256.h"
+#include "sb_time.h"
 #include <string.h>
 
 static const sb_byte_t ipad = 0x36;
@@ -60,6 +61,10 @@ void sb_hmac_sha256_init(sb_hmac_sha256_state_t hmac[static const restrict 1],
                          size_t const keylen)
 {
     memset(hmac, 0, sizeof(sb_hmac_sha256_state_t));
+
+    // Indicate that this method's runtime should not depend on
+    // the value of key
+    sb_poison_input(key, keylen);
 
     if (keylen > SB_SHA256_BLOCK_SIZE) {
         sb_sha256_init(&hmac->sha);
@@ -88,7 +93,7 @@ void sb_hmac_sha256_update(sb_hmac_sha256_state_t hmac[static const restrict 1],
                            const sb_byte_t* const restrict input,
                            const size_t len)
 {
-    sb_sha256_update(&hmac->sha, input, len);
+    sb_sha256_update(&hmac->sha, input, len); 
 }
 
 void sb_hmac_sha256_finish(sb_hmac_sha256_state_t hmac[static const restrict 1],
