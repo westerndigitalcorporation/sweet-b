@@ -47,6 +47,7 @@
 #include "sb_hkdf.h"
 #include "sb_error.h"
 #include "sb_test_cavp.h"
+#include "sb_time.h"
 
 #include <stddef.h>
 #include <string.h>
@@ -914,7 +915,7 @@ sb_sw_point_validate(sb_sw_context_t c[static const 1],
     r &= !sb_fe_equal(&MULT_POINT(c)->y, &SB_FE_ZERO);
 
     // 5.6.2.3.4 step 2: unreduced points are not valid.
-    r &= (sb_fe_lt(&MULT_POINT(c)->x, &s->p->p) &&
+    r &= (sb_fe_lt(&MULT_POINT(c)->x, &s->p->p) &
           sb_fe_lt(&MULT_POINT(c)->y, &s->p->p));
 
     // Valid Y values are now ensured to be quasi-reduced. Invalid Y values
@@ -1357,6 +1358,10 @@ sb_error_t sb_sw_hkdf_expand_private_key(sb_sw_context_t ctx[static const 1],
 {
     sb_error_t err = SB_SUCCESS;
 
+    // Indicate that this method's runtime should not depend on
+    // the value of info
+    sb_poison_input(info, info_len);
+
     // Nullify the context and output.
     SB_NULLIFY(ctx);
     SB_NULLIFY(private);
@@ -1417,6 +1422,10 @@ sb_error_t sb_sw_invert_private_key(sb_sw_context_t ctx[static const 1],
                                     sb_data_endian_t const e)
 {
     sb_error_t err = SB_SUCCESS;
+
+    // Indicate that this method's runtime should not depend on
+    // the value of private
+    sb_poison_input(private, sizeof(sb_sw_private_t));
 
     // Nullify the context and output.
     SB_NULLIFY(ctx);
@@ -1497,6 +1506,10 @@ sb_error_t sb_sw_compute_public_key_start
      const sb_data_endian_t e)
 {
     sb_error_t err = SB_SUCCESS;
+
+    // Indicate that this method's runtime should not depend on
+    // the value of private
+    sb_poison_input(private, sizeof(sb_sw_private_t));
 
     // Nullify the context.
     SB_NULLIFY(ctx);
@@ -1608,6 +1621,10 @@ sb_error_t sb_sw_compute_public_key(sb_sw_context_t ctx[static const 1],
 {
     sb_error_t err = SB_SUCCESS;
 
+    // Indicate that this method's runtime should not depend on
+    // the value of private
+    sb_poison_input(private, sizeof(sb_sw_private_t));
+
     err |= sb_sw_compute_public_key_start(ctx, private, drbg, curve, e);
     SB_RETURN_ERRORS(err, ctx);
 
@@ -1628,6 +1645,10 @@ sb_error_t sb_sw_valid_private_key(sb_sw_context_t ctx[static const 1],
                                    const sb_data_endian_t e)
 {
     sb_error_t err = SB_SUCCESS;
+
+    // Indicate that this method's runtime should not depend on
+    // the value of private
+    sb_poison_input(private, sizeof(sb_sw_private_t));
 
     SB_NULLIFY(ctx);
 
@@ -1650,6 +1671,10 @@ sb_error_t sb_sw_valid_public_key(sb_sw_context_t ctx[static const 1],
                                   const sb_data_endian_t e)
 {
     sb_error_t err = SB_SUCCESS;
+
+    // Indicate that this method's runtime should not depend on
+    // the value of public
+    sb_poison_input(public, sizeof(sb_sw_public_t));
 
     SB_NULLIFY(ctx);
 
@@ -1674,6 +1699,10 @@ sb_error_t sb_sw_compress_public_key(sb_sw_context_t ctx[static const 1],
                                      sb_data_endian_t e)
 {
     sb_error_t err = SB_SUCCESS;
+
+    // Indicate that this method's runtime should not depend on
+    // the value of public
+    sb_poison_input(public, sizeof(sb_sw_public_t));
 
     // Nullify the context and output.
     SB_NULLIFY(ctx);
@@ -1711,6 +1740,11 @@ sb_error_t sb_sw_decompress_public_key
      sb_data_endian_t e)
 {
     sb_error_t err = SB_SUCCESS;
+
+    // Indicate that this method's runtime should not depend on
+    // the value of compressed and sign
+    sb_poison_input(compressed, sizeof(sb_sw_compressed_t));
+    sb_poison_input(&sign, sizeof(sign));
 
     // Nullify the context and output.
     SB_NULLIFY(ctx);
@@ -1803,6 +1837,11 @@ sb_error_t sb_sw_shared_secret_start
 {
     sb_error_t err = SB_SUCCESS;
 
+    // Indicate that this method's runtime should not depend on
+    // the value of private or public
+    sb_poison_input(private, sizeof(sb_sw_private_t));
+    sb_poison_input(public, sizeof(sb_sw_public_t));
+
     // Nullify the context.
     SB_NULLIFY(ctx);
 
@@ -1877,6 +1916,11 @@ sb_error_t sb_sw_shared_secret(sb_sw_context_t ctx[static const 1],
 {
     sb_error_t err = SB_SUCCESS;
 
+    // Indicate that this method's runtime should not depend on
+    // the value of private or public
+    sb_poison_input(private, sizeof(sb_sw_private_t));
+    sb_poison_input(public, sizeof(sb_sw_public_t));
+
     err |= sb_sw_shared_secret_start(ctx, private, public, drbg, curve, e);
     SB_RETURN_ERRORS(err, ctx);
 
@@ -1901,6 +1945,11 @@ sb_error_t sb_sw_point_multiply_start
      const sb_data_endian_t e)
 {
     sb_error_t err = SB_SUCCESS;
+
+    // Indicate that this method's runtime should not depend on
+    // the value of private or public
+    sb_poison_input(private, sizeof(sb_sw_private_t));
+    sb_poison_input(public, sizeof(sb_sw_public_t));
 
     // Nullify the context.
     SB_NULLIFY(ctx);
@@ -1976,6 +2025,11 @@ sb_error_t sb_sw_point_multiply(sb_sw_context_t ctx[static const 1],
 {
     sb_error_t err = SB_SUCCESS;
 
+    // Indicate that this method's runtime should not depend on
+    // the value of private or public
+    sb_poison_input(private, sizeof(sb_sw_private_t));
+    sb_poison_input(public, sizeof(sb_sw_public_t));
+
     err |= sb_sw_point_multiply_start(ctx, private, public, drbg, curve, e);
     SB_RETURN_ERRORS(err, ctx);
 
@@ -2002,6 +2056,11 @@ static sb_error_t sb_sw_sign_message_digest_shared_start
      const sb_data_endian_t e)
 {
     sb_error_t err = SB_SUCCESS;
+
+    // Indicate that this method's runtime should not depend on
+    // the value of private or message
+    sb_poison_input(private, sizeof(sb_sw_private_t));
+    sb_poison_input(message, sizeof(sb_sw_message_digest_t));
 
     // Validate the private scalar and message.
 
@@ -2038,6 +2097,14 @@ sb_error_t sb_sw_sign_message_digest_with_k_beware_of_the_leopard
      const sb_data_endian_t e)
 {
     sb_error_t err = SB_SUCCESS;
+
+    // TODO: If this method causes an error we can remove the timing check. 
+    // Timing checks are included in this method for extra coverage.
+    // Indicate that this method's runtime should not depend on
+    // the value of private, message, or k
+    sb_poison_input(private, sizeof(sb_sw_private_t));
+    sb_poison_input(message, sizeof(sb_sw_message_digest_t));
+    sb_poison_input(k, sizeof(sb_sw_private_t));
 
     // Nullify the context and output.
     SB_NULLIFY(ctx);
@@ -2092,6 +2159,11 @@ sb_error_t sb_sw_sign_message_digest_start
      const sb_data_endian_t e)
 {
     sb_error_t err = SB_SUCCESS;
+
+    // Indicate that this method's runtime should not depend on
+    // the value of private or message
+    sb_poison_input(private, sizeof(sb_sw_private_t));
+    sb_poison_input(message, sizeof(sb_sw_message_digest_t));
 
     // Nullify the context.
     SB_NULLIFY(ctx);
@@ -2226,6 +2298,10 @@ sb_error_t sb_sw_sign_message_sha256_start
      const sb_sw_curve_id_t curve,
      const sb_data_endian_t e)
 {
+    // Indicate that this method's runtime should not depend on
+    // the value of private
+    sb_poison_input(private, sizeof(sb_sw_private_t));
+
     sb_sha256_finish_to_buffer(sha);
 
     // This egregious cast works because sb_sw_message_digest_t is just a struct
@@ -2295,6 +2371,11 @@ sb_error_t sb_sw_sign_message_digest
 {
     sb_error_t err = SB_SUCCESS;
 
+    // Indicate that this method's runtime should not depend on
+    // the value of private or message
+    sb_poison_input(private, sizeof(sb_sw_private_t));
+    sb_poison_input(message, sizeof(sb_sw_message_digest_t));
+
     err |= sb_sw_sign_message_digest_start(ctx, private, message,
                                            provided_drbg, curve, e);
     SB_RETURN_ERRORS(err, ctx);
@@ -2321,6 +2402,11 @@ sb_error_t sb_sw_sign_message_sha256
      const sb_sw_curve_id_t curve,
      const sb_data_endian_t e)
 {
+    // Indicate that this method's runtime should not depend on
+    // the value of private or input
+    sb_poison_input(private, sizeof(sb_sw_private_t));
+    sb_poison_input(input, input_len);
+    
     // Compute the message digest and provide it as output.
     sb_sha256_message(&ctx->param_gen.sha, digest->bytes, input, input_len);
 
@@ -2338,6 +2424,11 @@ sb_error_t sb_sw_composite_sign_wrap_message_digest
      sb_data_endian_t const e)
 {
     sb_error_t err = SB_SUCCESS;
+
+    // Indicate that this method's runtime should not depend on
+    // the value of message or private
+    sb_poison_input(message, sizeof(sb_sw_message_digest_t));
+    sb_poison_input(private, sizeof(sb_sw_private_t));
 
     // Nullify the context and output.
     SB_NULLIFY(ctx);
@@ -2431,6 +2522,11 @@ sb_error_t sb_sw_composite_sign_unwrap_signature
 {
     sb_error_t err = SB_SUCCESS;
 
+    // Indicate that this method's runtime should not depend on
+    // the value of signature or private
+    sb_poison_input(signature, sizeof(sb_sw_signature_t));
+    sb_poison_input(private, sizeof(sb_sw_private_t));
+
     // Nullify the context
     SB_NULLIFY(ctx);
     SB_NULLIFY(unwrapped);
@@ -2483,6 +2579,12 @@ sb_error_t sb_sw_verify_signature_start
 {
     sb_error_t err = SB_SUCCESS;
 
+    // Indicate that this method's runtime should not depend on
+    // the value of signature, public, or message
+    sb_poison_input(signature, sizeof(sb_sw_signature_t));
+    sb_poison_input(public, sizeof(sb_sw_public_t));
+    sb_poison_input(message, sizeof(sb_sw_message_digest_t));
+
     // Nullify the context.
     SB_NULLIFY(ctx);
 
@@ -2529,6 +2631,11 @@ sb_error_t sb_sw_verify_signature_sha256_start
      const sb_sw_curve_id_t curve,
      const sb_data_endian_t e)
 {
+    // Indicate that this method's runtime should not depend on
+    // the value of signature or public
+    sb_poison_input(signature, sizeof(sb_sw_signature_t));
+    sb_poison_input(public, sizeof(sb_sw_public_t));
+
     sb_sha256_finish_to_buffer(sha);
 
     // This egregious cast works because sb_sw_message_digest_t is just a struct
@@ -2588,6 +2695,12 @@ sb_error_t sb_sw_verify_signature(sb_sw_context_t ctx[static const 1],
 {
     sb_error_t err = SB_SUCCESS;
 
+    // Indicate that this method's runtime should not depend on
+    // the value of signature, public, or message
+    sb_poison_input(signature, sizeof(sb_sw_signature_t));
+    sb_poison_input(public, sizeof(sb_sw_public_t));
+    sb_poison_input(message, sizeof(sb_sw_message_digest_t));
+
     err |= sb_sw_verify_signature_start(ctx, signature, public, message,
                                         drbg, curve, e);
     SB_RETURN_ERRORS(err, ctx);
@@ -2614,6 +2727,12 @@ sb_error_t sb_sw_verify_signature_sha256
      const sb_sw_curve_id_t curve,
      const sb_data_endian_t e)
 {
+    // Indicate that this method's runtime should not depend on
+    // the value of signature, public, or input
+    sb_poison_input(signature, sizeof(sb_sw_signature_t));
+    sb_poison_input(public, sizeof(sb_sw_public_t));
+    sb_poison_input(input, input_len);
+
     // Compute the message digest and provide it as output.
     sb_sha256_message(&ctx->param_gen.sha, digest->bytes, input, input_len);
 

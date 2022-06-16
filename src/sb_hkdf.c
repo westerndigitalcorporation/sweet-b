@@ -40,6 +40,7 @@
  */
 
 #include "sb_test.h"
+#include "sb_time.h"
 #include <sb_hkdf.h>
 #include <string.h>
 
@@ -48,6 +49,9 @@ void sb_hkdf_extract_init(sb_hkdf_state_t hkdf[static const restrict 1],
                           size_t const salt_len)
 {
     memset(hkdf, 0, sizeof(sb_hkdf_state_t));
+
+    // Indicate that this method's runtime should not depend on salt's value
+    sb_poison_input(salt, salt_len);
 
     // if salt is not provided, it is set to a string of HashLen zeros (RFC5869)
     if (salt_len > 0) {
@@ -94,6 +98,10 @@ void sb_hkdf_kdf_init(sb_hkdf_state_t hkdf[static const restrict 1],
                       size_t const input_len)
 {
     memset(hkdf, 0, sizeof(sb_hkdf_state_t));
+
+    // Indicate that this method's runtime should not depend on input's value
+    sb_poison_input(input, input_len);
+
     sb_hmac_sha256_init(&hkdf->hmac, input, input_len);
 }
 
@@ -105,6 +113,10 @@ void sb_hkdf_expand(sb_hkdf_state_t hkdf[static const restrict 1],
 {
     size_t bytes_produced = 0;
     sb_byte_t iter = 1;
+
+    // Indicate that this method's runtime should not depend on info's value
+    sb_poison_input(info, info_len);
+
     while (bytes_produced < output_len) {
         size_t bytes = output_len - bytes_produced;
         if (bytes > SB_SHA256_SIZE) {

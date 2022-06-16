@@ -55,7 +55,7 @@ static const sb_byte_t NULL_ENTROPY[32] = { 0 };
         (drbg)->additional_input_required = 1; \
     } while (0)
 
-#define SB_TEST_RAND_COUNT 128
+#define SB_TEST_RAND_COUNT 32
 
 // De-incrementalized point multiplication wrapper for unit tests.
 static void
@@ -1178,7 +1178,7 @@ static size_t verify_recover_public_key(sb_sw_public_t keys[4],
     size_t i = 0;
 
     extract_sig_components(&m, sig, message, s, e);
-
+    sb_unpoison_output(&m, sizeof(m));
     if (sb_sw_point_decompress(&m, 0, s)) {
 
         pk_recovery(&m, s);
@@ -1202,7 +1202,7 @@ static size_t verify_recover_public_key(sb_sw_public_t keys[4],
     }
 
     extract_sig_components(&m, sig, message, s, e);
-
+    sb_unpoison_output(&m, sizeof(m));
     sb_fe_sub(C_T5(&m), &s->p->p, &s->n->p); // t5 = P - N
     if (sb_fe_lt(VERIFY_QR(&m), C_T5(&m)) |
         sb_fe_equal(VERIFY_QR(&m), C_T5(&m))) {
@@ -1674,43 +1674,42 @@ static _Bool sb_test_invalid_sig(const sb_byte_t invalid[static const SB_ELEM_BY
 }
 
 _Bool sb_test_sw_invalid_sig_p256(void) {
+    sb_sw_curve_id_t c = SB_SW_CURVE_P256;
+    sb_data_endian_t e = SB_DATA_ENDIAN_BIG;
     // Load up some buffers with the invalid signature values
     // 0 and N.
     sb_byte_t zeros[SB_ELEM_BYTES] = {0};
 
     sb_byte_t n[SB_ELEM_BYTES];
     const sb_sw_curve_t* s = NULL;
-    SB_TEST_ASSERT_SUCCESS(
-        sb_sw_curve_from_id(&s, SB_SW_CURVE_P256));
+    SB_TEST_ASSERT_SUCCESS(sb_sw_curve_from_id(&s, c));
 
-    sb_fe_to_bytes(n, &s->n->p, SB_DATA_ENDIAN_BIG);
+    sb_fe_to_bytes(n, &s->n->p, e);
 
-    return sb_test_invalid_sig(zeros,
-                               SB_SW_CURVE_P256, 
-                               SB_DATA_ENDIAN_BIG);
-    return sb_test_invalid_sig(n, 
-                               SB_SW_CURVE_P256,  
-                               SB_DATA_ENDIAN_BIG);
+    SB_TEST_ASSERT(sb_test_invalid_sig(zeros, c, e) == 1);
+    SB_TEST_ASSERT(sb_test_invalid_sig(n, c, e) == 1);
+
+    return 1;
 }
 
 _Bool sb_test_sw_invalid_sig_secp256k1(void) {
+    sb_sw_curve_id_t c = SB_SW_CURVE_SECP256K1;
+    sb_data_endian_t e = SB_DATA_ENDIAN_LITTLE;
+
     // Load up some buffers with the invalid signature values
     // 0 and N.
     sb_byte_t zeros[SB_ELEM_BYTES] = {0};
 
     sb_byte_t n[SB_ELEM_BYTES];
     const sb_sw_curve_t* s = NULL;
-    SB_TEST_ASSERT_SUCCESS(
-        sb_sw_curve_from_id(&s, SB_SW_CURVE_SECP256K1));
+    SB_TEST_ASSERT_SUCCESS(sb_sw_curve_from_id(&s, c));
 
-    sb_fe_to_bytes(n, &s->n->p, SB_DATA_ENDIAN_LITTLE);
+    sb_fe_to_bytes(n, &s->n->p, e);
 
-    return sb_test_invalid_sig(zeros,
-                               SB_SW_CURVE_SECP256K1, 
-                               SB_DATA_ENDIAN_LITTLE);
-    return sb_test_invalid_sig(n,
-                               SB_SW_CURVE_SECP256K1, 
-                               SB_DATA_ENDIAN_LITTLE);
+    SB_TEST_ASSERT(sb_test_invalid_sig(zeros, c, e) == 1);
+    SB_TEST_ASSERT(sb_test_invalid_sig(n, c, e) == 1);
+
+    return 1;
 }
 
 
