@@ -277,8 +277,8 @@ _Bool sb_test_secp256k1_endomorphism(void)
     return 1;
 }
 
-// The following scalars cause exceptions in the ladder. Test that our
-// handling of these exceptions is valid.
+// The following scalars would cause exceptions in the ladder.
+// Test that our handling of these exceptions is valid.
 _Bool sb_test_exceptions(void)
 {
     sb_sw_context_t m;
@@ -288,46 +288,90 @@ _Bool sb_test_exceptions(void)
     // Exceptions produce P, not zero, due to ZVA countermeasures
 #define EX_ZERO(c) ((c).p->p)
 
-#define TEST_EX() do { \
+#define TEST_EX(kv, pv) do { \
+    *MULT_K(&m) = (kv); \
+    *MULT_POINT(&m) = (pv); \
     SB_TEST_ASSERT(!sb_sw_scalar_validate(MULT_K(&m), &SB_CURVE_P256)); \
     sb_sw_point_mult(&m, &SB_CURVE_P256); \
     SB_TEST_ASSERT(sb_fe_equal(C_X1(&m), &EX_ZERO(SB_CURVE_P256)) && \
            sb_fe_equal(C_Y1(&m), &EX_ZERO(SB_CURVE_P256))); \
 } while (0)
 
-#define TEST_NO_EX() do { \
+#define TEST_NO_EX(kv, pv) do { \
+    *MULT_K(&m) = (kv); \
+    *MULT_POINT(&m) = (pv); \
     SB_TEST_ASSERT(sb_sw_scalar_validate(MULT_K(&m), &SB_CURVE_P256)); \
     sb_sw_point_mult(&m, &SB_CURVE_P256); \
     SB_TEST_ASSERT(!(sb_fe_equal(C_X1(&m), &EX_ZERO(SB_CURVE_P256)) && \
            sb_fe_equal(C_Y1(&m), &EX_ZERO(SB_CURVE_P256)))); \
 } while (0)
 
-    *MULT_POINT(&m) = SB_CURVE_P256.g_r;
+    sb_fe_t k;
+    const sb_fe_pair_t g = SB_CURVE_P256.g_r;
+
+    sb_fe_pair_t z_even, z_odd;
+
+    z_even.x = SB_CURVE_P256_P.p;
+    z_odd.x = SB_CURVE_P256_P.p;
+
+    *MULT_POINT_X(&m) = SB_FE_ZERO;
+    SB_TEST_ASSERT(sb_sw_point_decompress(&m, 0, &SB_CURVE_P256));
+    sb_fe_mont_convert(&z_even.y, MULT_POINT_Y(&m), &SB_CURVE_P256_P);
+
+    *MULT_POINT_X(&m) = SB_FE_ZERO;
+    SB_TEST_ASSERT(sb_sw_point_decompress(&m, 1, &SB_CURVE_P256));
+    sb_fe_mont_convert(&z_odd.y, MULT_POINT_Y(&m), &SB_CURVE_P256_P);
 
     // This is not an exception, strictly speaking.
     // k = 0
-    *MULT_K(&m) = SB_CURVE_P256.n->p;
-    TEST_EX();
+    TEST_EX(SB_CURVE_P256.n->p, g);
+    TEST_EX(SB_CURVE_P256.n->p, z_even);
+    TEST_EX(SB_CURVE_P256.n->p, z_odd);
 
     // k = 1
-    *MULT_K(&m) = SB_FE_ONE;
-    TEST_NO_EX();
+    TEST_NO_EX(SB_FE_ONE, g);
+    TEST_NO_EX(SB_FE_ONE, z_even);
+    TEST_NO_EX(SB_FE_ONE, z_odd);
 
     // k = -1
-    *MULT_K(&m) = SB_CURVE_P256.n->p;
-    sb_fe_mod_sub(MULT_K(&m), MULT_K(&m), &SB_FE_ONE, SB_CURVE_P256.n);
-    TEST_NO_EX();
+    k = SB_CURVE_P256.n->p;
+    sb_fe_mod_sub(&k, &k, &SB_FE_ONE, SB_CURVE_P256.n);
+    TEST_NO_EX(k, g);
+    TEST_NO_EX(k, z_even);
+    TEST_NO_EX(k, z_odd);
 
     // k = -2
-    *MULT_K(&m) = SB_CURVE_P256.n->p;
-    sb_fe_mod_sub(MULT_K(&m), MULT_K(&m), &SB_FE_ONE, SB_CURVE_P256.n);
-    sb_fe_mod_sub(MULT_K(&m), MULT_K(&m), &SB_FE_ONE, SB_CURVE_P256.n);
-    TEST_NO_EX();
+    k = SB_CURVE_P256.n->p;
+    sb_fe_mod_sub(&k, &k, &SB_FE_ONE, SB_CURVE_P256.n);
+    sb_fe_mod_double(&k, &k, SB_CURVE_P256.n);
+    TEST_NO_EX(k, g);
+    TEST_NO_EX(k, z_even);
+    TEST_NO_EX(k, z_odd);
 
     // k = 2
-    *MULT_K(&m) = SB_FE_ONE;
-    sb_fe_mod_add(MULT_K(&m), MULT_K(&m), &SB_FE_ONE, SB_CURVE_P256.n);
-    TEST_NO_EX();
+    k = SB_FE_ONE;
+    sb_fe_mod_double(&k, &k, SB_CURVE_P256.n);
+    TEST_NO_EX(k, g);
+    TEST_NO_EX(k, z_even);
+    TEST_NO_EX(k, z_odd);
+
+    // k = -4 causes exceptions for (0, ±√B)
+    k = SB_CURVE_P256.n->p;
+    sb_fe_mod_sub(&k, &k, &SB_FE_ONE, SB_CURVE_P256.n);
+    sb_fe_mod_double(&k, &k, SB_CURVE_P256.n);
+    sb_fe_mod_double(&k, &k, SB_CURVE_P256.n);
+    TEST_NO_EX(k, g);
+    TEST_NO_EX(k, z_even);
+    TEST_NO_EX(k, z_odd);
+
+    // k = 4 causes exceptions for (0, ±√B)
+    k = SB_FE_ONE;
+    sb_fe_mod_double(&k, &k, SB_CURVE_P256.n);
+    sb_fe_mod_double(&k, &k, SB_CURVE_P256.n);
+    TEST_NO_EX(k, g);
+    TEST_NO_EX(k, z_even);
+    TEST_NO_EX(k, z_odd);
+
     return 1;
 }
 
@@ -373,6 +417,67 @@ _Bool sb_test_sw_h(void)
 {
     SB_TEST_ASSERT(test_h(&SB_CURVE_P256));
     SB_TEST_ASSERT(test_h(&SB_CURVE_SECP256K1));
+
+    return 1;
+}
+
+// Test that the special value dz_r is computed correctly.
+_Bool sb_test_p256_dz(void)
+{
+    const sb_sw_curve_t* const s = &SB_CURVE_P256;
+    sb_sw_context_t m;
+    SB_NULLIFY(&m); // entire structure is now zeroed
+
+    SB_TEST_ASSERT(sb_sw_point_decompress(&m, 0, s));
+    // MULT_POINT(&m) now holds (0, sqrt(B))
+
+    sb_double_t z;
+    SB_NULLIFY(&z);
+    sb_fe_to_bytes(z.bytes + SB_ELEM_BYTES, MULT_POINT_Y(&m), SB_DATA_ENDIAN_BIG);
+    // z now holds (0, sqrt(B)) as a serialized point
+
+    *C_X2(&m) = SB_FE_ZERO;
+    sb_fe_mont_convert(C_Y2(&m), &MULT_POINT(&m)->y, s->p);
+
+    sb_sw_point_initial_double(&m, s);
+    // (x2, y2) now holds 2*P with Z in t5
+
+    sb_fe_mod_inv_r(C_T5(&m), C_T6(&m), C_T7(&m), s->p);
+    // t5 now holds Z^-1
+
+    sb_fe_mont_square(C_T6(&m), C_T5(&m), s->p); // t6 = Z^-2
+    sb_fe_mont_mult(C_T7(&m), C_T5(&m), C_T6(&m), s->p); // t7 = Z^-3
+
+    sb_fe_mont_mult(C_X1(&m), C_X2(&m), C_T6(&m), s->p); // x1 = x2 * Z^-2
+    sb_fe_mont_mult(C_Y1(&m), C_Y2(&m), C_T7(&m), s->p); // y1 = y2 * Z^-3
+
+    // Verify dz_r
+    SB_TEST_ASSERT_EQUAL(*C_X1(&m), s->dz_r.x);
+    SB_TEST_ASSERT_EQUAL(*C_Y1(&m), s->dz_r.y);
+
+    // Montgomery reduce to obtain output point
+    sb_fe_mont_reduce(MULT_POINT_X(&m), C_X1(&m), s->p);
+    sb_fe_mont_reduce(MULT_POINT_Y(&m), C_Y1(&m), s->p);
+
+    sb_double_t p;
+    sb_fe_to_bytes(p.bytes, MULT_POINT_X(&m), SB_DATA_ENDIAN_BIG);
+    sb_fe_to_bytes(p.bytes + SB_ELEM_BYTES, MULT_POINT_Y(&m), SB_DATA_ENDIAN_BIG);
+
+    // p now holds 2 * (0, sqrt(B))
+
+    sb_single_t k, k_inv;
+    // t5 = 2
+    *C_T5(&m) = (sb_fe_t) SB_FE_CONST_QR(0, 0, 0, 2, &SB_CURVE_P256_P);
+    sb_fe_to_bytes(k.bytes, C_T5(&m), SB_DATA_ENDIAN_BIG);
+
+    SB_TEST_ASSERT_SUCCESS(sb_sw_invert_private_key(&m, &k_inv, &k, NULL, SB_SW_CURVE_P256, SB_DATA_ENDIAN_BIG));
+
+    // k_inv = 2^-1 mod p
+
+    sb_double_t o;
+
+    SB_TEST_ASSERT_SUCCESS(sb_sw_point_multiply(&m, &o, &k_inv, &p, NULL, SB_SW_CURVE_P256, SB_DATA_ENDIAN_BIG));
+    SB_TEST_ASSERT_EQUAL(o, z);
 
     return 1;
 }
@@ -751,6 +856,63 @@ _Bool sb_test_shared_secret_cavp_1(void)
     return 1;
 }
 
+// Test that the point (0, ±√𝐵) is handled correctly in shared secrets.
+_Bool sb_test_p256_zero_x(void)
+{
+    sb_sw_context_t ct;
+
+    const sb_sw_compressed_t zero = { .bytes = { 0 } };
+
+    sb_sw_public_t p_zero;
+    sb_sw_public_t p_zero_pos;
+
+    sb_sw_public_t sh1, sh2;
+    sb_sw_private_t k, k_inv;
+
+    sb_hmac_drbg_state_t drbg;
+
+    NULL_DRBG_INIT(&drbg);
+
+    SB_TEST_ASSERT_SUCCESS(sb_sw_decompress_public_key(&ct, &p_zero, &zero, 0, SB_SW_CURVE_P256, SB_DATA_ENDIAN_BIG));
+    SB_TEST_ASSERT_SUCCESS(sb_sw_decompress_public_key(&ct, &p_zero_pos, &zero, 1, SB_SW_CURVE_P256, SB_DATA_ENDIAN_BIG));
+
+    SB_TEST_ASSERT(memcmp(p_zero.bytes, zero.bytes, SB_ELEM_BYTES) == 0);
+    SB_TEST_ASSERT((p_zero.bytes[2 * SB_ELEM_BYTES - 1] & 1) == 0);
+
+    SB_TEST_ASSERT(memcmp(p_zero_pos.bytes, zero.bytes, SB_ELEM_BYTES) == 0);
+    SB_TEST_ASSERT((p_zero_pos.bytes[2 * SB_ELEM_BYTES - 1] & 1) == 1);
+
+    _Bool sign;
+    sb_sw_compressed_t zero_comp;
+
+    SB_TEST_ASSERT_SUCCESS(sb_sw_compress_public_key(&ct, &zero_comp, &sign, &p_zero, SB_SW_CURVE_P256, SB_DATA_ENDIAN_BIG));
+    SB_TEST_ASSERT_EQUAL(zero, zero_comp);
+    SB_TEST_ASSERT(sign == 0);
+
+    SB_TEST_ASSERT_SUCCESS(sb_sw_compress_public_key(&ct, &zero_comp, &sign, &p_zero_pos, SB_SW_CURVE_P256, SB_DATA_ENDIAN_BIG));
+    SB_TEST_ASSERT_EQUAL(zero, zero_comp);
+    SB_TEST_ASSERT(sign == 1);
+
+    SB_TEST_ASSERT_SUCCESS(sb_sw_generate_private_key(&ct, &k, &drbg, SB_SW_CURVE_P256, SB_DATA_ENDIAN_BIG));
+    SB_TEST_ASSERT_SUCCESS(sb_sw_invert_private_key(&ct, &k_inv, &k, NULL, SB_SW_CURVE_P256, SB_DATA_ENDIAN_BIG));
+
+    SB_TEST_ASSERT_SUCCESS(sb_sw_point_multiply(&ct, &sh1, &k, &p_zero, NULL, SB_SW_CURVE_P256, SB_DATA_ENDIAN_BIG));
+    SB_TEST_ASSERT_NOT_EQUAL(p_zero, sh1);
+
+    SB_TEST_ASSERT_SUCCESS(sb_sw_point_multiply(&ct, &sh2, &k_inv, &sh1, NULL, SB_SW_CURVE_P256, SB_DATA_ENDIAN_BIG));
+    SB_TEST_ASSERT_EQUAL(p_zero, sh2);
+
+    SB_TEST_ASSERT_SUCCESS(sb_sw_generate_private_key(&ct, &k, &drbg, SB_SW_CURVE_P256, SB_DATA_ENDIAN_BIG));
+    SB_TEST_ASSERT_SUCCESS(sb_sw_invert_private_key(&ct, &k_inv, &k, NULL, SB_SW_CURVE_P256, SB_DATA_ENDIAN_BIG));
+
+    SB_TEST_ASSERT_SUCCESS(sb_sw_point_multiply(&ct, &sh1, &k, &p_zero_pos, NULL, SB_SW_CURVE_P256, SB_DATA_ENDIAN_BIG));
+    SB_TEST_ASSERT_NOT_EQUAL(p_zero_pos, sh1);
+
+    SB_TEST_ASSERT_SUCCESS(sb_sw_point_multiply(&ct, &sh2, &k_inv, &sh1, NULL, SB_SW_CURVE_P256, SB_DATA_ENDIAN_BIG));
+    SB_TEST_ASSERT_EQUAL(p_zero_pos, sh2);
+
+    return 1;
+}
 
 // Created for use in sb_test_shared_secret_secp256k1.
 // Also used in sb_test_sw_invalid_scalar as a valid public key for
@@ -1382,7 +1544,7 @@ _Bool sb_test_pk_recovery(void)
     SB_TEST_ASSERT(verify_recover_public_key(recovered, &TEST_SIG,
                                              &TEST_MESSAGE, &SB_CURVE_P256,
                                              SB_DATA_ENDIAN_BIG) == 2);
-    SB_TEST_ASSERT_EQUAL(recovered[1].bytes, TEST_PUB_2);
+    SB_TEST_ASSERT_EQUAL(recovered[0].bytes, TEST_PUB_2);
     return 1;
 }
 
@@ -1394,7 +1556,7 @@ _Bool sb_test_pk_recovery_james(void)
     SB_TEST_ASSERT(verify_recover_public_key(recovered, &JAMES_SIG,
                                              &JAMES_MESSAGE, &SB_CURVE_P256,
                                              SB_DATA_ENDIAN_BIG) == 2);
-    SB_TEST_ASSERT_EQUAL(recovered[0].bytes, JAMES_PUB);
+    SB_TEST_ASSERT_EQUAL(recovered[1].bytes, JAMES_PUB);
     SB_TEST_ASSERT(verify_recover_public_key(recovered, &JAMES_SIG_2,
                                              &JAMES_MESSAGE_2, &SB_CURVE_P256,
                                              SB_DATA_ENDIAN_BIG) == 2);
@@ -1917,6 +2079,9 @@ static _Bool sb_test_decompress_iter_c(const sb_sw_curve_id_t c,
         SB_TEST_ASSERT_SUCCESS(sb_sw_compress_public_key(&ct, &x, &sign, &p,
                                                          c,
                                                          e));
+                                              
+        // Verify that the low bit matches the produced sign.
+        SB_TEST_ASSERT((p.bytes[e == SB_DATA_ENDIAN_BIG ? 2 * SB_ELEM_BYTES - 1 : SB_ELEM_BYTES] & 1) == sign);
         SB_TEST_ASSERT_SUCCESS(sb_sw_decompress_public_key(&ct, &p2, &x,
                                                            sign, c,
                                                            e));

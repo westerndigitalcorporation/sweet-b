@@ -67,6 +67,7 @@ typedef struct sb_sw_curve_t {
     // multiplied by R
     sb_fe_pair_t h_r; // H = (2^257 - 1)^-1 * G, with X and Y multiplied by R
     sb_fe_pair_t g_h_r; // G + H, with X and Y multiplied by R
+    sb_fe_pair_t dz_r; // 2 * (0, √𝐵) where √𝐵 has sign bit 0, if such a point exists
     sb_sw_curve_id_t id; // the curve ID for this curve
 } sb_sw_curve_t;
 
@@ -156,6 +157,12 @@ static const sb_sw_curve_t SB_CURVE_P256 = {
                        &SB_CURVE_P256_P),
         SB_FE_CONST_QR(0xD041EE1CCC6223C9, 0xCD81EFC57B6F0943,
                        0xC614355C4D10A425, 0x3A1739581FCABBB7, &SB_CURVE_P256_P)
+    },
+    .dz_r = {
+        SB_FE_CONST_QR(0x2D0F1BE2B5577CF9, 0x8DECDF26C01CE141,
+                       0x07E28A0D562D7881, 0x8218884B2F38E1D6, &SB_CURVE_P256_P),
+        SB_FE_CONST_QR(0x707320391E7826FA, 0x36925B3CB704A1FC,
+                       0xE77DA7D78929B20A, 0x747C0826CD4F4E7B, &SB_CURVE_P256_P)
     },
     .id = SB_SW_CURVE_P256
 };
