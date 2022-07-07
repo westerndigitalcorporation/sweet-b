@@ -256,6 +256,15 @@ static const sb_sw_curve_t SB_CURVE_SECP256K1 = {
                        0xC7B977CC32E0BAA9, 0xC374BB2A1315A22F,
                        &SB_CURVE_SECP256K1_P)
     },
+    // There is no point with an X coordinate of 0 on this
+    // curve, but quasi-reduced values for dz_r still must be
+    // supplied.
+    .dz_r = {
+        SB_FE_CONST_QR(0, 0, 0, 1,
+                       &SB_CURVE_SECP256K1_P),
+        SB_FE_CONST_QR(0, 0, 0, 1,
+                       &SB_CURVE_SECP256K1_P)
+    },
     .id = SB_SW_CURVE_SECP256K1
 };
 

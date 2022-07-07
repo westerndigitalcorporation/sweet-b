@@ -436,7 +436,7 @@ _Bool sb_test_p256_dz(void)
     sb_fe_to_bytes(z.bytes + SB_ELEM_BYTES, MULT_POINT_Y(&m), SB_DATA_ENDIAN_BIG);
     // z now holds (0, sqrt(B)) as a serialized point
 
-    *C_X2(&m) = SB_FE_ZERO;
+    *C_X2(&m) = s->p->p;
     sb_fe_mont_convert(C_Y2(&m), &MULT_POINT(&m)->y, s->p);
 
     sb_sw_point_initial_double(&m, s);
