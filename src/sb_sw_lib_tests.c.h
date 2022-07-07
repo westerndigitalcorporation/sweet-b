@@ -186,6 +186,29 @@ _Bool sb_test_ladder_simple(void)
     SB_TEST_ASSERT(test_ladder_simple(&SB_CURVE_P256.g_r, &SB_CURVE_P256));
     SB_TEST_ASSERT(test_ladder_simple(&SB_CURVE_P256.h_r, &SB_CURVE_P256));
     SB_TEST_ASSERT(test_ladder_simple(&SB_CURVE_P256.g_h_r, &SB_CURVE_P256));
+
+    // Testing for (0, sqrt(B))
+    for (sb_word_t sign = 0; sign <= 1; sign++) {
+        const sb_sw_curve_t* const s = &SB_CURVE_P256;
+        sb_sw_context_t m;
+        SB_NULLIFY(&m); // entire structure is now zeroed
+
+        SB_TEST_ASSERT(sb_sw_point_decompress(&m, sign, s));
+        // MULT_POINT(&m) now holds (0, sqrt(B))
+
+        sb_double_t z;
+        SB_NULLIFY(&z);
+        sb_fe_to_bytes(z.bytes + SB_ELEM_BYTES, MULT_POINT_Y(&m), SB_DATA_ENDIAN_BIG);
+        // z now holds (0, sqrt(B)) as a serialized point
+
+        sb_fe_pair_t zp;
+
+        zp.x = s->p->p;
+        sb_fe_mont_convert(&zp.y, &MULT_POINT(&m)->y, s->p);
+
+        SB_TEST_ASSERT(test_ladder_simple(&zp, &SB_CURVE_P256));
+    }
+
     SB_TEST_ASSERT(
         test_ladder_simple(&SB_CURVE_SECP256K1.g_r, &SB_CURVE_SECP256K1));
     SB_TEST_ASSERT(
