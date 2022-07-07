@@ -341,6 +341,19 @@ void sb_fe_mod_reduce(sb_fe_t dest[static const restrict 1],
     sb_fe_mod_sub(dest, dest, &SB_FE_ONE, p);
 }
 
+// Un-quasi-reduce the input, under the assumption that the input is already
+// quasi-reduced and thus in the range [1, p]
+void sb_fe_mod_reduce_full(sb_fe_t dest[static const restrict 1],
+                           const sb_prime_field_t p[static const restrict 1])
+{
+    SB_FE_ASSERT_QR(dest, p);
+
+    // c is 0 iff dest < p
+    const sb_word_t c = sb_fe_lt(dest, &p->p) ^ 1;
+
+    sb_fe_cond_sub_p(dest, c, &p->p);
+}
+
 // Given quasi-reduced left and right, produce quasi-reduced left - right.
 // This is done as a subtraction of (right - 1) followed by addition of
 // 1 or (p + 1), which means that a result of all zeros is never written back
@@ -388,6 +401,52 @@ void sb_fe_mod_double(sb_fe_t dest[static const 1],
                       const sb_prime_field_t p[static const 1])
 {
     sb_fe_mod_add(dest, left, left, p);
+}
+
+// bits must be < SB_WORD_BITS
+// as used, this is one or two
+// Shifts the value a to the right bits number of times.
+static void sb_fe_rshift_w(sb_fe_t a[static const 1], const sb_bitcount_t bits)
+{
+    sb_word_t carry = 0;
+
+    SB_ASSERT(bits < SB_WORD_BITS, "invalid shift in sb_fe_rshift_w");
+
+    for (size_t i = SB_FE_WORDS - 1; i <= SB_FE_WORDS; i--) {
+        sb_word_t word = SB_FE_WORD(a, i);
+        SB_FE_WORD(a, i) = (sb_word_t) (((sb_uword_t) word >> bits) |
+                                        (sb_uword_t) carry);
+        carry = (sb_word_t) (word << (SB_WORD_BITS - bits));
+    }
+
+    SB_FE_UNQR(a);
+}
+
+// Halve the input. Assumes input is quasi-reduced and may be equal to p
+void sb_fe_mod_halve(sb_fe_t dest[static const 1],
+                     const sb_fe_t left[static const 1],
+                     sb_fe_t temp[static const 1],
+                     const sb_prime_field_t p[static const 1])
+{
+    SB_FE_ASSERT_QR(left, p);
+
+    const sb_word_t low = sb_fe_test_bit(left, 0);
+
+    *temp = *left;
+    *dest = *temp;
+    sb_fe_rshift_w(dest, 1); // left = left / 2
+
+    // The following uses non-modular subtraction. If the input is p,
+    // the additive inversion of p will be 0; shifting this right by
+    // one bit and then subtracting from p again will restore the value p
+    sb_fe_sub(temp, &p->p, temp); // temp = -temp    
+    sb_fe_rshift_w(temp, 1); // temp = temp / 2
+    sb_fe_sub(temp, &p->p, temp); // temp = -temp    
+
+    // if the low bit is 0, left has the correct answer; otherwise temp does
+    sb_fe_ctswap(low, dest, temp);
+
+    SB_FE_QR(dest, p);
 }
 
 #if !SB_FE_ASM
