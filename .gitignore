@@ -46,3 +46,4 @@ callgrind.out.*
 *.dSYM
 .vscode
 sb_test
+build
