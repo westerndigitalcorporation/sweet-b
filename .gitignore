@@ -47,3 +47,4 @@ callgrind.out.*
 .vscode
 sb_test
 build
+.DS_Store

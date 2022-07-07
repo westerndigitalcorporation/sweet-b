@@ -566,7 +566,7 @@ static _Bool test_sw_point_mult_add(const sb_fe_t* const ka,
     sb_fe_mont_mult(C_X2(&q), C_T6(&q), &pabc.x, s->p); // x2 = x * Z^2
     sb_fe_mont_mult(C_Y2(&q), C_T7(&q), &pabc.y, s->p); // y2 = y * Z^3
     SB_TEST_ASSERT(
-        sb_fe_equal(C_X1(&q), C_X2(&q)) && sb_fe_equal(C_Y1(&q), C_Y2(&q)));
+        sb_fe_equal(C_X1(&q), C_X2(&q)) & sb_fe_equal(C_Y1(&q), C_Y2(&q)));
     return 1;
 }
 
@@ -1363,8 +1363,7 @@ static size_t verify_recover_public_key(sb_sw_public_t keys[4],
     size_t i = 0;
 
     extract_sig_components(&m, sig, message, s, e);
-    sb_unpoison_output(&m, sizeof(m));
-    if (sb_sw_point_decompress(&m, 0, s)) {
+    SB_TEST_IF_POISON(sb_sw_point_decompress(&m, 0, s)) {
 
         pk_recovery(&m, s);
 
@@ -1387,10 +1386,9 @@ static size_t verify_recover_public_key(sb_sw_public_t keys[4],
     }
 
     extract_sig_components(&m, sig, message, s, e);
-    sb_unpoison_output(&m, sizeof(m));
     sb_fe_sub(C_T5(&m), &s->p->p, &s->n->p); // t5 = P - N
-    if (sb_fe_lt(VERIFY_QR(&m), C_T5(&m)) |
-        sb_fe_equal(VERIFY_QR(&m), C_T5(&m))) {
+    SB_TEST_IF_POISON(sb_fe_lt(VERIFY_QR(&m), C_T5(&m)) |
+                      sb_fe_equal(VERIFY_QR(&m), C_T5(&m))) {
         *C_T5(&m) = s->n->p; // t5 = N
         sb_fe_mod_reduce(C_T5(&m), s->p); // N is reduced mod P
         sb_fe_mod_reduce(MULT_POINT_X(&m), s->p); // likewise
