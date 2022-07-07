@@ -43,7 +43,7 @@
 #ifndef SB_TIME_H
 #define SB_TIME_H
 
-#ifdef SB_TIME
+#if SB_TIME
 #include <valgrind/memcheck.h>
 #endif
 
@@ -53,7 +53,7 @@
  * This function is used to mark all fields that contain or are derived from 
  * secret data.
  */
-#ifdef SB_TIME
+#if SB_TIME
 #define sb_poison_input(addr, len) VALGRIND_MAKE_MEM_UNDEFINED(addr, len)
 #else
 #define sb_poison_input(addr, len) do { /* Nothing */ } while (0)
@@ -65,7 +65,7 @@
  * indicate that we no do not make any timing guarantees on invalid data, or 
  * to prevent propagation of a poisoned state object to all of its output.
  */
-#ifdef SB_TIME
+#if SB_TIME
 #define sb_unpoison_output(addr, len) VALGRIND_MAKE_MEM_DEFINED(addr, len)
 #else
 #define sb_unpoison_output(addr, len) do { /* Nothing */ } while (0)
