@@ -100,10 +100,14 @@ extern _Bool sb_test_assert_failed(const char* file, const char* line,
 
 /* For timing tests, to be used in test case situations where we know the input
  * is poison and it's still OK to use in a conditional expression */
+#if SB_TIME
 #define SB_TEST_IF_POISON(v) \
     for (_Bool tmp_ ## __LINE__ = (v); \
          sb_unpoison_output(&tmp_ ## __LINE__, sizeof(sb_word_t)), tmp_ ## __LINE__; \
          tmp_ ## __LINE__ = 0)
+#else
+#define SB_TEST_IF_POISON(v) if ((v))
+#endif
 
 #define SB_TEST_ASSERT(e) do { \
     SB_TEST_IF_POISON(!(e)) { \
