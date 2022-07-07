@@ -1,4 +1,4 @@
-/** @file sb_time.ch
+/** @file sb_time.h
  *  @brief operations to test for timing differences based on inputs
  */
 
@@ -42,6 +42,10 @@
 
 #ifndef SB_TIME_H
 #define SB_TIME_H
+
+#ifndef SB_TIME
+#define SB_TIME 0
+#endif
 
 #if SB_TIME
 #include <valgrind/memcheck.h>
