@@ -43,7 +43,9 @@
 #ifndef SB_TIME_H
 #define SB_TIME_H
 
-#include "../valgrind/memcheck.h"
+#ifdef SB_TIME
+#include <valgrind/memcheck.h>
+#endif
 
 /** 
  * Poisons a memory region of len bytes, starting at addr, indicating that

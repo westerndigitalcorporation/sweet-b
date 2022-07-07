@@ -98,10 +98,15 @@ extern void sb_test_buf_free(sb_test_buf_t* buf);
 extern _Bool sb_test_assert_failed(const char* file, const char* line,
                                    const char* expression);
 
+/* For timing tests, to be used in test case situations where we know the input
+ * is poison and it's still OK to use in a conditional expression */
+#define SB_TEST_IF_POISON(v) \
+    for (_Bool tmp_ ## __LINE__ = (v); \
+         sb_unpoison_output(&tmp_ ## __LINE__, sizeof(sb_word_t)), tmp_ ## __LINE__; \
+         tmp_ ## __LINE__ = 0)
+
 #define SB_TEST_ASSERT(e) do { \
-    _Bool temp = e; \
-    sb_unpoison_output(&(temp), sizeof(temp)); \
-    if (!(temp)) { \
+    SB_TEST_IF_POISON(!(e)) { \
         return sb_test_assert_failed(__FILE__, SB_TEST_STRINGIFY(__LINE__), #e); \
     } \
 } while (0)
@@ -110,10 +115,13 @@ extern _Bool sb_test_assert_failed(const char* file, const char* line,
 #define SB_TEST_ASSERT_ERROR(e, ...) SB_TEST_ASSERT((e) == \
     SB_ERRORS(__VA_ARGS__))
 
-static inline uint8_t sb_test_ctc(uint8_t* restrict a, 
-                                  uint8_t* restrict b, 
+static inline uint8_t sb_test_ctc(const void* a_v,
+                                  const void* b_v,
                                   size_t len)
 {
+    const uint8_t* const a = (const uint8_t*) a_v;
+    const uint8_t* const b = (const uint8_t*) b_v;
+
     uint8_t r = 0;
     
     for (size_t i = 0; i < len; i++) {

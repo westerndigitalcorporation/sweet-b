@@ -103,7 +103,6 @@ void sb_fe_to_bytes(sb_byte_t dest[static const restrict SB_ELEM_BYTES],
 // Returns an all-0 or all-1 word given a boolean flag 0 or 1 (respectively)
 static inline sb_word_t sb_word_mask(const sb_word_t a)
 {
-    sb_unpoison_output(&a, sizeof(sb_word_t));
     SB_ASSERT((a == 0 || a == 1), "word used for ctc must be 0 or 1");
     return (sb_word_t) -a;
 }

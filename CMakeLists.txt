@@ -50,7 +50,7 @@ if("${CMAKE_C_COMPILER_ID}" STREQUAL "Clang" OR
     set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Weverything -Wno-padded -Wno-c++98-compat -Wno-documentation-unknown-command")
     set(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} -fsanitize=undefined -fsanitize=address")
 endif()
-set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -D_POSIX_C_SOURCE=200112L -Wall -pedantic -Wextra -g -O0")
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -D_POSIX_C_SOURCE=200112L -Wall -pedantic -Wextra")
 set(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} -Werror")
 
 include_directories(include)
@@ -114,12 +114,16 @@ if(SB_TEST)
         set(SB_TEST_WORD_SIZE "2" CACHE STRING "")
     endif()
 
-    if(NOT DEFINED SB_TEST_VERIFY_QR)
-        set(SB_TEST_VERIFY_QR "1" CACHE STRING "")
+    if(NOT DEFINED SB_TIME)
+        set(SB_TIME "0" CACHE STRING "")
     endif()
 
-    if(NOT DEFINED SB_TIME)
-        set(SB_TIME "1" CACHE STRING "")
+    if(SB_TIME)
+        set(SB_TEST_VERIFY_QR "0" CACHE STRING "")
+    endif()
+
+    if(NOT DEFINED SB_TEST_VERIFY_QR)
+        set(SB_TEST_VERIFY_QR "1" CACHE STRING "")
     endif()
 
     target_compile_definitions(sb_test PRIVATE
