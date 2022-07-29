@@ -55,7 +55,7 @@ jobs:
       fail-fast: true
       matrix:
         configuration: [Debug, Release]
-        processor: [default, arm]
+        processor: [default, arm, timecop]
         include:
           - processor: default
             toolchain-option: "-DCMAKE_C_COMPILER=clang"
@@ -63,6 +63,10 @@ jobs:
             toolchain-option: "-DCMAKE_TOOLCHAIN_FILE=arm.cmake"
             run-wrap: qemu-arm
             packages: gcc-arm-linux-gnueabihf libc6-dev-armhf-cross qemu-user
+          - processor: timecop
+            toolchain-option: "-DSB_TIME=1 -DSB_TEST_VERIFY_QR=0"
+            run-wrap: valgrind --exit-errorcode=255
+            packages: valgrind
 
     steps:
     - uses: actions/checkout@v3
