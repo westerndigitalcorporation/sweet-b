@@ -899,10 +899,10 @@ _Bool sb_test_p256_zero_x(void)
     SB_TEST_ASSERT_SUCCESS(sb_sw_decompress_public_key(&ct, &p_zero, &zero, 0, SB_SW_CURVE_P256, SB_DATA_ENDIAN_BIG));
     SB_TEST_ASSERT_SUCCESS(sb_sw_decompress_public_key(&ct, &p_zero_pos, &zero, 1, SB_SW_CURVE_P256, SB_DATA_ENDIAN_BIG));
 
-    SB_TEST_ASSERT(memcmp(p_zero.bytes, zero.bytes, SB_ELEM_BYTES) == 0);
+    SB_TEST_ASSERT_EQUAL(p_zero.bytes, zero.bytes, SB_ELEM_BYTES);
     SB_TEST_ASSERT((p_zero.bytes[2 * SB_ELEM_BYTES - 1] & 1) == 0);
 
-    SB_TEST_ASSERT(memcmp(p_zero_pos.bytes, zero.bytes, SB_ELEM_BYTES) == 0);
+    SB_TEST_ASSERT_EQUAL(p_zero_pos.bytes, zero.bytes, SB_ELEM_BYTES);
     SB_TEST_ASSERT((p_zero_pos.bytes[2 * SB_ELEM_BYTES - 1] & 1) == 1);
 
     _Bool sign;
