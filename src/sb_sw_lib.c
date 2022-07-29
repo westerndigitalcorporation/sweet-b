@@ -276,6 +276,37 @@ sb_sw_point_mult_start(sb_sw_context_t m[static const 1],
 
     sb_sw_context_saved_state_t state = *MULT_STATE(m);
 
+    // If the input point is (0, ±√𝐵), the scalar will be halved
+    // and the point 2 * (0, ±√𝐵) will be substituted in instead.
+
+    // is_zero is not persisted in the state because restoration of
+    // the original scalar is only needed for signing, which involves
+    // a multiplication by G (and thus is_zero is always 0).
+    const sb_word_t is_zero = sb_fe_equal(MULT_POINT_X(m), &curve->p->p);
+
+    // Because the input point is already in Montgomery domain, the sign
+    // can't be computed directly from the Y coordinate in MULT_POINT_Y.
+    sb_fe_mont_reduce(C_Y1(m), MULT_POINT_Y(m), curve->p);
+    const sb_word_t zero_sign = sb_fe_test_bit(C_Y1(m), 0);
+
+    // Copy 2 * (0, √𝐵) into (X1, Y1)
+    *C_X1(m) = curve->dz_r.x;
+    *C_Y1(m) = curve->dz_r.y;
+
+    // (X1, Y2) = -2 * (0, √𝐵)
+    sb_fe_mod_negate(C_Y2(m), C_Y1(m), curve->p);
+
+    // Swap in the appropriate point based on the "sign" of the input point.
+    sb_fe_ctswap(zero_sign, C_Y1(m), C_Y2(m));
+
+    // Halve the input scalar into t5
+    sb_fe_mod_halve(C_T5(m), MULT_K(m), C_T6(m), curve->n);
+
+    // Swap in the halved scalar and doubled point based on is_zero
+    sb_fe_ctswap(is_zero, MULT_K(m), C_T5(m));
+    sb_fe_ctswap(is_zero, MULT_POINT_X(m), C_X1(m));
+    sb_fe_ctswap(is_zero, MULT_POINT_Y(m), C_Y1(m));
+
     // If the top bit of the scalar is set, invert the scalar and the input
     // point. This ensures that the scalar -2, which would otherwise be
     // exceptional in our ladder, is treated as the scalar 2. The
@@ -960,7 +991,7 @@ sb_sw_point_decompress(sb_sw_context_t c[static const 1],
     r &= sb_fe_mod_sqrt(C_Y1(c), C_T5(c), C_T6(c), C_T7(c), C_T8(c), s->p);
 
     // If the "sign" bit does not match, invert the candidate square root
-    const sb_word_t sign_mismatch = sb_fe_test_bit(C_Y1(c), 1) ^sign;
+    const sb_word_t sign_mismatch = sb_fe_test_bit(C_Y1(c), 0) ^ sign;
     sb_fe_mod_negate(C_T5(c), C_Y1(c), s->p);
     sb_fe_ctswap(sign_mismatch, C_Y1(c), C_T5(c));
 
@@ -1696,7 +1727,7 @@ sb_error_t sb_sw_compress_public_key(sb_sw_context_t ctx[static const 1],
     memcpy(compressed->bytes, public->bytes, SB_ELEM_BYTES);
 
     // The "sign" bit is the low order bit of the Y value.
-    const sb_word_t sign_w = sb_fe_test_bit(MULT_POINT_Y(ctx), 1);
+    const sb_word_t sign_w = sb_fe_test_bit(MULT_POINT_Y(ctx), 0);
     *sign = (_Bool) sign_w;
 
     SB_RETURN(err, ctx);
@@ -1725,6 +1756,9 @@ sb_error_t sb_sw_decompress_public_key
     err |= SB_ERROR_IF(PUBLIC_KEY_INVALID,
                        !sb_sw_point_decompress(ctx, (sb_word_t) sign, s));
     SB_RETURN_ERRORS(err, ctx);
+
+    // Fully reduce X to [0, p)
+    sb_fe_mod_reduce_full(MULT_POINT_X(ctx), s->p);
 
     sb_fe_to_bytes(public->bytes, MULT_POINT_X(ctx), e);
     sb_fe_to_bytes(public->bytes + SB_ELEM_BYTES, MULT_POINT_Y(ctx), e);
@@ -1860,8 +1894,10 @@ sb_error_t sb_sw_shared_secret_finish(sb_sw_context_t ctx[static const 1],
                         sb_fe_equal(C_Y1(ctx), &s->p->p)));
     SB_ASSERT(!err, "Montgomery ladder produced the point at infinity from a "
                     "valid scalar.");
+    SB_RETURN_ERRORS(err, ctx);
 
-
+    // Fully reduce the output to [0, p)
+    sb_fe_mod_reduce_full(C_X1(ctx), s->p);
     sb_fe_to_bytes(secret->bytes, C_X1(ctx), e);
 
     SB_RETURN(err, ctx);
@@ -1959,6 +1995,11 @@ sb_error_t sb_sw_point_multiply_finish(sb_sw_context_t ctx[static const 1],
                         sb_fe_equal(C_Y1(ctx), &s->p->p)));
     SB_ASSERT(!err, "Montgomery ladder produced the point at infinity from a "
                     "valid scalar.");
+
+    SB_RETURN_ERRORS(err, ctx);
+
+    // Fully reduce X to [0, p)
+    sb_fe_mod_reduce_full(C_X1(ctx), s->p);
 
     sb_fe_to_bytes(output->bytes, C_X1(ctx), e);
     sb_fe_to_bytes(output->bytes + SB_ELEM_BYTES, C_Y1(ctx), e);

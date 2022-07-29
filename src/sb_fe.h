@@ -678,6 +678,18 @@ extern void sb_fe_mod_reduce(sb_fe_t dest[static restrict 1],
                              const sb_prime_field_t p[static restrict 1]);
 
 /**
+ * @brief Constant-time modular full reduction.
+ * 
+ * Restores a quasi-reduced value in the range [1, p] to one that is
+ * reduced to the range [0, p - 1].
+ * 
+ * @param [in,out] dest The field element to be fully reduced.
+ * @param [in] p The prime field to compute the reduction with respect to.
+ */
+extern void sb_fe_mod_reduce_full(sb_fe_t dest[static restrict 1],
+                                  const sb_prime_field_t p[static restrict 1]);
+
+/**
  * @brief Constant-time modular addition.
  *
  * Places the quasi-reduced result of the modular addition \p left + \p right
@@ -709,6 +721,23 @@ extern void sb_fe_mod_add(sb_fe_t dest[static 1],
 extern void sb_fe_mod_double(sb_fe_t dest[static 1],
                              const sb_fe_t left[static 1],
                              const sb_prime_field_t p[static 1]);
+
+/**
+ * @brief Constant-time modular halving.
+ *
+ * Places the quasi-reduced result of the modular halving \p left / 2 in \p
+ * dest.
+ *
+ * @param [out] dest Result of the modular halving. May alias \p left.
+ * @param [in] left The value to be halved.
+ * @param [in] temp A temporary field element to use in the computation.
+ * @param [in] p The prime field for the modular operation.
+ */
+
+extern void sb_fe_mod_halve(sb_fe_t dest[static 1],
+                            const sb_fe_t left[static 1],
+                            sb_fe_t temp[static 1],
+                            const sb_prime_field_t p[static 1]);
 
 /**
  * @brief Constant-time modular subtraction.

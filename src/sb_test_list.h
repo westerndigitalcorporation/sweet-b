@@ -54,6 +54,7 @@ SB_DEFINE_TEST(hkdf);
 // These tests are for general field operations
 // and can be found in sb_fe_tests.c.h
 SB_DEFINE_TEST(fe);
+SB_DEFINE_TEST(mod_double);
 SB_DEFINE_TEST(mont_mult);
 SB_DEFINE_TEST(mont_mult_overflow);
 SB_DEFINE_TEST(mod_expt_p);
@@ -69,6 +70,7 @@ SB_DEFINE_TEST(ladder_simple);
 SB_DEFINE_TEST(secp256k1_endomorphism);
 SB_DEFINE_TEST(exceptions);
 SB_DEFINE_TEST(sw_h);
+SB_DEFINE_TEST(p256_dz);
 SB_DEFINE_TEST(sw_point_mult_add);
 // Known answer tests for keygen, shared_secret, and sign/verify work as they
 // should.
@@ -79,6 +81,7 @@ SB_DEFINE_TEST(valid_private);
 SB_DEFINE_TEST(valid_public);
 SB_DEFINE_TEST(shared_secret);
 SB_DEFINE_TEST(shared_secret_cavp_1);
+SB_DEFINE_TEST(p256_zero_x);
 SB_DEFINE_TEST(shared_secret_secp256k1);
 SB_DEFINE_TEST(sign_rfc6979);
 SB_DEFINE_TEST(sign_rfc6979_sha256);
