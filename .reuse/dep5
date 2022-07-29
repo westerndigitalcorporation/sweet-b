@@ -6,3 +6,7 @@ Source: https://github.com/westerndigitalcorporation/sweet-b
 Files: cavp/*.rsp cavp/*.txt
 Copyright: National Institute of Standards and Technology (NIST)
 License: LicenseRef-NIST-1
+
+Files: wycheproof/testvectors/*_test
+Copyright: Google
+License: Apache-2.0
