@@ -121,6 +121,12 @@ SB_DEFINE_TEST(shared_iter_secp256k1);
 SB_DEFINE_TEST(sign_iter);
 SB_DEFINE_TEST(sign_iter_secp256k1);
 
+SB_DEFINE_TEST(wycheproof_ecdh_secp256k1);
+SB_DEFINE_TEST(wycheproof_ecdh_p256);
+SB_DEFINE_TEST(wycheproof_ecdsa_secp256k1);
+SB_DEFINE_TEST(wycheproof_ecdsa_p256);
+SB_DEFINE_TEST(wycheproof_hmac_sha256);
+
 #ifndef SB_TEST_TIS
 
 // NIST CAVP tests

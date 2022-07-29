@@ -76,6 +76,7 @@ typedef struct sb_test_buf_t {
 static const sb_test_buf_t sb_test_buf_init = { .buf = NULL, .len = 0 };
 
 extern _Bool sb_test_open(const char* name, FILE** handle);
+extern _Bool sb_test_read_line(FILE* const handle, sb_test_buf_t* const line);
 extern _Bool sb_test_advance_to_section(FILE* handle, const char* section);
 extern _Bool sb_test_fetch_next_int(FILE* handle, size_t* value);
 extern _Bool sb_test_fetch_next_value(FILE* handle, sb_test_buf_t* value);

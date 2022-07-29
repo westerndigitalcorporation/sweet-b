@@ -92,7 +92,11 @@ set(SB_SOURCES
         src/sb_hkdf.c
 
         src/sb_fe.c
-        src/sb_sw_lib.c)
+        src/sb_sw_lib.c
+        
+        wycheproof/sb_wycheproof_ecdh_test.c
+        wycheproof/sb_wycheproof_ecdsa_test.c
+        wycheproof/sb_wycheproof_hmac_test.c)
 
 if(NOT DEFINED SB_TEST)
     option(SB_TEST "" ON)
