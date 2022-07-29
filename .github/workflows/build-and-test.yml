@@ -65,7 +65,7 @@ jobs:
             packages: gcc-arm-linux-gnueabihf libc6-dev-armhf-cross qemu-user
           - processor: timecop
             toolchain-option: "-DSB_TIME=1 -DSB_TEST_VERIFY_QR=0"
-            run-wrap: valgrind --exit-errorcode=255
+            run-wrap: valgrind --error-exitcode=255
             packages: valgrind
 
     steps:
