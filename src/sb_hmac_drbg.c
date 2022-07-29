@@ -40,6 +40,7 @@
  */
 
 #include "sb_test.h"
+#include "sb_time.h"
 #include "sb_hmac_drbg.h"
 #include "sb_error.h" // for SB_NULLIFY
 #include <string.h>
@@ -93,6 +94,11 @@ sb_error_t sb_hmac_drbg_reseed(sb_hmac_drbg_state_t
                                const size_t additional_len)
 {
     sb_error_t err = 0;
+
+    // Indicate that this method's runtime should not depend on 
+    // entropy or additional's values
+    sb_poison_input(entropy, entropy_len);
+    sb_poison_input(additional, additional_len);
 
     if (drbg->reseed_counter == 0) {
         err |= SB_ERROR_DRBG_UNINITIALIZED;
@@ -148,6 +154,12 @@ sb_error_t sb_hmac_drbg_init(sb_hmac_drbg_state_t drbg[static const restrict 1],
                              size_t const personalization_len)
 {
     memset(drbg, 0, sizeof(sb_hmac_drbg_state_t));
+
+    // Indicate that this method's runtime should not depend on 
+    // the value of entropy, nonce, or personalization
+    sb_poison_input(entropy, entropy_len);
+    sb_poison_input(nonce, nonce_len);
+    sb_poison_input(personalization, personalization_len);
 
     // V is all zeros, which is the initial HMAC key
     sb_hmac_sha256_init(&drbg->hmac, drbg->V, SB_SHA256_SIZE);
@@ -206,6 +218,10 @@ static sb_error_t sb_hmac_drbg_generate_additional_vec_opt
     size_t total_additional_len = 0;
     for (size_t i = 0; i < SB_HMAC_DRBG_ADD_VECTOR_LEN; i++) {
         total_additional_len += additional_len[i];
+
+        // Indicate that this method's runtime should not depend on 
+        // the value of each additional input
+        sb_poison_input(additional[i], additional_len[i]);
     }
 
     if ((additional_required

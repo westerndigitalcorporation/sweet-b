@@ -1,5 +1,5 @@
-/** @file sb_error.h
- *  @brief private error return macros
+/** @file sb_time.h
+ *  @brief operations to test for timing differences based on inputs
  */
 
 /*
@@ -39,64 +39,40 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef SB_ERROR_H
-#define SB_ERROR_H
 
-#include "sb_types.h"
-#include "sb_time.h"
+#ifndef SB_TIME_H
+#define SB_TIME_H
 
-#include <string.h>
+#ifndef SB_TIME
+#define SB_TIME 0
+#endif
 
-#define SB_NULLIFY(ptr) do { \
-    memset((ptr), 0, sizeof(*(ptr))); \
-} while (0)
+#if SB_TIME
+#include <valgrind/memcheck.h>
+#endif
 
-#define SB_ERROR_IF(err, cond) ((-(sb_error_t) (cond)) & (sb_error_t) \
-SB_ERROR_## err)
-
-#define SB_RETURN_ERRORS_2(err, zero_ctx) do { \
-    sb_unpoison_output(&err, sizeof(sb_error_t)); \
-    if (err) { \
-        SB_NULLIFY(zero_ctx); \
-        return err; \
-    } \
-} while (0)
-
-#define SB_RETURN_ERRORS_1(err, unused) do { \
-    sb_unpoison_output(&err, sizeof(sb_error_t)); \
-    if (err) { \
-        return err; \
-    } \
-} while (0)
-
-#define SB_RETURN_ERRORS_n(a, b, c, ...) c(a, b)
-
-#define SB_RETURN_ERRORS(...) \
-    SB_RETURN_ERRORS_n(__VA_ARGS__, SB_RETURN_ERRORS_2, SB_RETURN_ERRORS_1, \
-                       NOT_ENOUGH_ARGUMENTS)
-
-#define SB_RETURN(err, zero_ctx) do { \
-    SB_NULLIFY(zero_ctx); \
-    return err; \
-} while (0)
-
-#define SB_ERRORS_4(err1, err2, err3, err4) \
-    (((sb_error_t) (err1)) | ((sb_error_t) (err2)) | ((sb_error_t) (err3)) | \
-     ((sb_error_t) (err4)))
-
-#define SB_ERRORS_3(err1, err2, err3, unused) \
-    (((sb_error_t) (err1)) | ((sb_error_t) (err2)) | ((sb_error_t) (err3)))
-
-#define SB_ERRORS_2(err1, err2, unused1, unused2) \
-    (((sb_error_t) (err1)) | ((sb_error_t) (err2)))
-
-#define SB_ERRORS_1(err1, unused1, unused2, unused3) \
-    ((sb_error_t) (err1))
-
-#define SB_ERRORS_n(a, b, c, d, e, ...) e(a, b, c, d)
-
-#define SB_ERRORS(...) \
-    SB_ERRORS_n(__VA_ARGS__, SB_ERRORS_4, SB_ERRORS_3, SB_ERRORS_2, \
-        SB_ERRORS_1, NOT_ENOUGH_ARGUMENTS)
+/** 
+ * Poisons a memory region of len bytes, starting at addr, indicating that
+ * execution time must not depend on the content of this memory region.
+ * This function is used to mark all fields that contain or are derived from 
+ * secret data.
+ */
+#if SB_TIME
+#define sb_poison_input(addr, len) VALGRIND_MAKE_MEM_UNDEFINED(addr, len)
+#else
+#define sb_poison_input(addr, len) do { /* Nothing */ } while (0)
+#endif
+/**
+ * Removes the poison indicatior from a memory region of len bytes, starting
+ * at addr, to signify that execution time is allowed to depend on the content
+ * of this memory region. This function is used either on invalid input to 
+ * indicate that we no do not make any timing guarantees on invalid data, or 
+ * to prevent propagation of a poisoned state object to all of its output.
+ */
+#if SB_TIME
+#define sb_unpoison_output(addr, len) VALGRIND_MAKE_MEM_DEFINED(addr, len)
+#else
+#define sb_unpoison_output(addr, len) do { /* Nothing */ } while (0)
+#endif
 
 #endif

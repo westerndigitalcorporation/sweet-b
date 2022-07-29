@@ -55,7 +55,7 @@ static const sb_byte_t NULL_ENTROPY[32] = { 0 };
         (drbg)->additional_input_required = 1; \
     } while (0)
 
-#define SB_TEST_RAND_COUNT 128
+#define SB_TEST_RAND_COUNT 32
 
 // De-incrementalized point multiplication wrapper for unit tests.
 static void
@@ -566,7 +566,7 @@ static _Bool test_sw_point_mult_add(const sb_fe_t* const ka,
     sb_fe_mont_mult(C_X2(&q), C_T6(&q), &pabc.x, s->p); // x2 = x * Z^2
     sb_fe_mont_mult(C_Y2(&q), C_T7(&q), &pabc.y, s->p); // y2 = y * Z^3
     SB_TEST_ASSERT(
-        sb_fe_equal(C_X1(&q), C_X2(&q)) && sb_fe_equal(C_Y1(&q), C_Y2(&q)));
+        sb_fe_equal(C_X1(&q), C_X2(&q)) & sb_fe_equal(C_Y1(&q), C_Y2(&q)));
     return 1;
 }
 
@@ -899,10 +899,10 @@ _Bool sb_test_p256_zero_x(void)
     SB_TEST_ASSERT_SUCCESS(sb_sw_decompress_public_key(&ct, &p_zero, &zero, 0, SB_SW_CURVE_P256, SB_DATA_ENDIAN_BIG));
     SB_TEST_ASSERT_SUCCESS(sb_sw_decompress_public_key(&ct, &p_zero_pos, &zero, 1, SB_SW_CURVE_P256, SB_DATA_ENDIAN_BIG));
 
-    SB_TEST_ASSERT(memcmp(p_zero.bytes, zero.bytes, SB_ELEM_BYTES) == 0);
+    SB_TEST_ASSERT_EQUAL(p_zero.bytes, zero.bytes, SB_ELEM_BYTES);
     SB_TEST_ASSERT((p_zero.bytes[2 * SB_ELEM_BYTES - 1] & 1) == 0);
 
-    SB_TEST_ASSERT(memcmp(p_zero_pos.bytes, zero.bytes, SB_ELEM_BYTES) == 0);
+    SB_TEST_ASSERT_EQUAL(p_zero_pos.bytes, zero.bytes, SB_ELEM_BYTES);
     SB_TEST_ASSERT((p_zero_pos.bytes[2 * SB_ELEM_BYTES - 1] & 1) == 1);
 
     _Bool sign;
@@ -1363,8 +1363,7 @@ static size_t verify_recover_public_key(sb_sw_public_t keys[4],
     size_t i = 0;
 
     extract_sig_components(&m, sig, message, s, e);
-
-    if (sb_sw_point_decompress(&m, 0, s)) {
+    SB_TEST_IF_POISON(sb_sw_point_decompress(&m, 0, s)) {
 
         pk_recovery(&m, s);
 
@@ -1387,10 +1386,9 @@ static size_t verify_recover_public_key(sb_sw_public_t keys[4],
     }
 
     extract_sig_components(&m, sig, message, s, e);
-
     sb_fe_sub(C_T5(&m), &s->p->p, &s->n->p); // t5 = P - N
-    if (sb_fe_lt(VERIFY_QR(&m), C_T5(&m)) |
-        sb_fe_equal(VERIFY_QR(&m), C_T5(&m))) {
+    SB_TEST_IF_POISON(sb_fe_lt(VERIFY_QR(&m), C_T5(&m)) |
+                      sb_fe_equal(VERIFY_QR(&m), C_T5(&m))) {
         *C_T5(&m) = s->n->p; // t5 = N
         sb_fe_mod_reduce(C_T5(&m), s->p); // N is reduced mod P
         sb_fe_mod_reduce(MULT_POINT_X(&m), s->p); // likewise
@@ -1859,43 +1857,42 @@ static _Bool sb_test_invalid_sig(const sb_byte_t invalid[static const SB_ELEM_BY
 }
 
 _Bool sb_test_sw_invalid_sig_p256(void) {
+    sb_sw_curve_id_t c = SB_SW_CURVE_P256;
+    sb_data_endian_t e = SB_DATA_ENDIAN_BIG;
     // Load up some buffers with the invalid signature values
     // 0 and N.
     sb_byte_t zeros[SB_ELEM_BYTES] = {0};
 
     sb_byte_t n[SB_ELEM_BYTES];
     const sb_sw_curve_t* s = NULL;
-    SB_TEST_ASSERT_SUCCESS(
-        sb_sw_curve_from_id(&s, SB_SW_CURVE_P256));
+    SB_TEST_ASSERT_SUCCESS(sb_sw_curve_from_id(&s, c));
 
-    sb_fe_to_bytes(n, &s->n->p, SB_DATA_ENDIAN_BIG);
+    sb_fe_to_bytes(n, &s->n->p, e);
 
-    return sb_test_invalid_sig(zeros,
-                               SB_SW_CURVE_P256, 
-                               SB_DATA_ENDIAN_BIG);
-    return sb_test_invalid_sig(n, 
-                               SB_SW_CURVE_P256,  
-                               SB_DATA_ENDIAN_BIG);
+    SB_TEST_ASSERT(sb_test_invalid_sig(zeros, c, e) == 1);
+    SB_TEST_ASSERT(sb_test_invalid_sig(n, c, e) == 1);
+
+    return 1;
 }
 
 _Bool sb_test_sw_invalid_sig_secp256k1(void) {
+    sb_sw_curve_id_t c = SB_SW_CURVE_SECP256K1;
+    sb_data_endian_t e = SB_DATA_ENDIAN_LITTLE;
+
     // Load up some buffers with the invalid signature values
     // 0 and N.
     sb_byte_t zeros[SB_ELEM_BYTES] = {0};
 
     sb_byte_t n[SB_ELEM_BYTES];
     const sb_sw_curve_t* s = NULL;
-    SB_TEST_ASSERT_SUCCESS(
-        sb_sw_curve_from_id(&s, SB_SW_CURVE_SECP256K1));
+    SB_TEST_ASSERT_SUCCESS(sb_sw_curve_from_id(&s, c));
 
-    sb_fe_to_bytes(n, &s->n->p, SB_DATA_ENDIAN_LITTLE);
+    sb_fe_to_bytes(n, &s->n->p, e);
 
-    return sb_test_invalid_sig(zeros,
-                               SB_SW_CURVE_SECP256K1, 
-                               SB_DATA_ENDIAN_LITTLE);
-    return sb_test_invalid_sig(n,
-                               SB_SW_CURVE_SECP256K1, 
-                               SB_DATA_ENDIAN_LITTLE);
+    SB_TEST_ASSERT(sb_test_invalid_sig(zeros, c, e) == 1);
+    SB_TEST_ASSERT(sb_test_invalid_sig(n, c, e) == 1);
+
+    return 1;
 }
 
 

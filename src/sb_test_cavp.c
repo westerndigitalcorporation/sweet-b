@@ -116,6 +116,7 @@ _Bool sb_test_open(const char* const name, FILE** const handle)
 
 void sb_test_buf_free(sb_test_buf_t* const buf)
 {
+    sb_unpoison_output(buf->buf, buf->len);
     free(buf->buf);
     *buf = sb_test_buf_init;
 }
@@ -202,6 +203,7 @@ static _Bool sb_test_concat(sb_test_buf_t* const first,
 
 _Bool sb_test_fetch_next_value(FILE* const handle, sb_test_buf_t* const value)
 {
+    sb_unpoison_output(value->buf, value->len);
     while (1) {
         if (!sb_test_read_line(handle, value) ||
             (value->len > 0 && value->buf[0] == '[')) {
@@ -247,17 +249,6 @@ _Bool sb_test_fetch_next_int(FILE* const handle, size_t* const value)
     return 0;
 }
 
-#define SB_TEST_PROGRESS_COUNT 32
-
-void sb_test_progress(size_t const count, _Bool const final)
-{
-    if (final ? ((count % SB_TEST_PROGRESS_COUNT) != 0) :
-        (count > 0 && (count % SB_TEST_PROGRESS_COUNT) == 0)) {
-        printf("%zd... ", count);
-        fflush(stdout);
-    }
-}
-
 // Actual tests start here
 
 static _Bool
@@ -278,8 +269,6 @@ sb_test_cavp_ecdh_shared_secret(sb_sw_curve_id_t curve, const char* name)
     while (sb_test_fetch_next_int(tests, &count)) {
         SB_TEST_ASSERT(count == i);
         i++;
-
-        sb_test_progress(count, 0);
 
         SB_TEST_ASSERT(sb_test_fetch_next_value(tests, &x));
         SB_TEST_ASSERT(sb_test_fetch_next_value(tests, &y));
@@ -308,9 +297,10 @@ sb_test_cavp_ecdh_shared_secret(sb_sw_curve_id_t curve, const char* name)
             sb_sw_shared_secret(&ct, &out, &prv_key_a, &pub_key_b, NULL,
                                 curve, SB_DATA_ENDIAN_BIG));
         SB_TEST_ASSERT_EQUAL(secret, out);
-    }
 
-    sb_test_progress(count, 1);
+        sb_unpoison_output(x.buf, x.len);
+        sb_unpoison_output(y.buf, y.len);
+    }
 
     sb_test_buf_free(&x);
     sb_test_buf_free(&y);
@@ -338,7 +328,6 @@ static _Bool sb_test_cavp_signatures(sb_sw_curve_id_t curve, const char* name)
     SB_TEST_ASSERT(sb_test_advance_to_section(tests, name));
 
     while (sb_test_fetch_next_value(tests, &message)) {
-        sb_test_progress(count, 0);
         count++;
 
         SB_TEST_BYTES_RAW(&message);
@@ -393,8 +382,6 @@ static _Bool sb_test_cavp_signatures(sb_sw_curve_id_t curve, const char* name)
 
     }
 
-    sb_test_progress(count, 1);
-
     sb_test_buf_free(&message);
     sb_test_buf_free(&x);
     sb_test_buf_free(&y);
@@ -419,8 +406,6 @@ static _Bool sb_test_cavp_hmac(const char* name)
         SB_TEST_ASSERT(count == i);
         i++;
 
-        sb_test_progress(count, 0);
-
         SB_TEST_ASSERT(sb_test_fetch_next_int(tests, &klen));
         SB_TEST_ASSERT(sb_test_fetch_next_int(tests, &tlen));
 
@@ -442,9 +427,13 @@ static _Bool sb_test_cavp_hmac(const char* name)
         sb_hmac_sha256_finish(&hmac, h);
 
         SB_TEST_ASSERT_EQUAL(h, mac.buf[0], tlen);
+        
+        // Unpoison these fields so they can go through the file I/O before
+        // getting repoisoned.
+        sb_unpoison_output(key.buf, key.len);
+        sb_unpoison_output(message.buf, message.len);
+        sb_unpoison_output(mac.buf, mac.len);
     }
-
-    sb_test_progress(count, 1);
 
     sb_test_buf_free(&key);
     sb_test_buf_free(&message);
@@ -481,8 +470,6 @@ sb_test_cavp_hmac_drbg(const char* file, const char* name, size_t section)
     }
 
     i = 0;
-
-    sb_test_progress(section, 0);
 
     while (sb_test_fetch_next_int(tests, &count)) {
         SB_TEST_ASSERT(count == i);
@@ -545,6 +532,7 @@ sb_test_cavp_hmac_drbg(const char* file, const char* name, size_t section)
 
         SB_TEST_ASSERT_EQUAL(output_act[0], output.buf[0], output.len);
 
+        sb_unpoison_output(output_act, output.len);
         free(output_act);
     }
 
@@ -568,8 +556,7 @@ _Bool sb_test_cavp_hmac_drbg_sha256(void)
     for (i = 0; i < 16; i++) {
         result &= sb_test_cavp_hmac_drbg(HMAC_DBRG_VECTORS, "[SHA-256]", i);
     }
-
-    sb_test_progress(i, 1);
+    
     return result;
 }
 
