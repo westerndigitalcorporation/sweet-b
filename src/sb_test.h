@@ -51,7 +51,9 @@
 #endif
 
 #include <assert.h>
-#define SB_ASSERT(e, s) assert((e) && (s)[0])
+#define SB_ASSERT(e, s) do { \
+    assert((e) && (s)[0]); \
+} while (0) 
 #else
 #define SB_ASSERT(e, s) do { } while (0)
 #endif
@@ -60,6 +62,7 @@
 #include <stdio.h>
 #include <string.h>
 #include "sb_types.h"
+#include "sb_time.h"
 
 #ifndef SB_TEST_ITER_DEFAULT
 #define SB_TEST_ITER_DEFAULT 8192
@@ -85,8 +88,6 @@ extern _Bool sb_test_string_to_bytes(const sb_test_buf_t* string,
                                      size_t blen);
 extern void sb_test_buf_free(sb_test_buf_t* buf);
 
-extern void sb_test_progress(size_t count, _Bool final);
-
 #define SB_TEST_BYTES(in, out) \
     SB_TEST_ASSERT(sb_test_string_to_bytes((in), (out).bytes, sizeof(out)))
 
@@ -98,8 +99,19 @@ extern void sb_test_progress(size_t count, _Bool final);
 extern _Bool sb_test_assert_failed(const char* file, const char* line,
                                    const char* expression);
 
+/* For timing tests, to be used in test case situations where we know the input
+ * is poison and it's still OK to use in a conditional expression */
+#if SB_TIME
+#define SB_TEST_IF_POISON(v) \
+    for (_Bool tmp_ ## __LINE__ = (v); \
+         sb_unpoison_output(&tmp_ ## __LINE__, sizeof(sb_word_t)), tmp_ ## __LINE__; \
+         tmp_ ## __LINE__ = 0)
+#else
+#define SB_TEST_IF_POISON(v) if ((v))
+#endif
+
 #define SB_TEST_ASSERT(e) do { \
-    if (!(e)) { \
+    SB_TEST_IF_POISON(!(e)) { \
         return sb_test_assert_failed(__FILE__, SB_TEST_STRINGIFY(__LINE__), #e); \
     } \
 } while (0)
@@ -108,8 +120,26 @@ extern _Bool sb_test_assert_failed(const char* file, const char* line,
 #define SB_TEST_ASSERT_ERROR(e, ...) SB_TEST_ASSERT((e) == \
     SB_ERRORS(__VA_ARGS__))
 
+static inline uint8_t sb_test_ctc(const void* a_v,
+                                  const void* b_v,
+                                  size_t len)
+{
+    const uint8_t* const a = (const uint8_t*) a_v;
+    const uint8_t* const b = (const uint8_t*) b_v;
+
+    uint8_t r = 0;
+    
+    for (size_t i = 0; i < len; i++) {
+        r |= (a[i] ^ b[i]);
+    }
+
+    return ((r | (uint8_t) -r) >> 7) ^ 1;
+}
+
 #define SB_TEST_ASSERT_EQUAL_2(v, e1, e2, s) \
-    SB_TEST_ASSERT((memcmp(&(e1), &(e2), (s)) == 0) == (v))
+    do { \
+        SB_TEST_ASSERT((sb_test_ctc(&(e1), &(e2), (s))) == (v)); \
+    } while (0)
 
 #define SB_TEST_ASSERT_EQUAL_1(v, e1, e2, unused) \
     SB_TEST_ASSERT_EQUAL_2(v, e1, e2, sizeof(e2))

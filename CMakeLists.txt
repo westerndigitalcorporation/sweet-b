@@ -118,6 +118,14 @@ if(SB_TEST)
         set(SB_TEST_WORD_SIZE "2" CACHE STRING "")
     endif()
 
+    if(NOT DEFINED SB_TIME)
+        set(SB_TIME "0" CACHE STRING "")
+    endif()
+
+    if(SB_TIME)
+        set(SB_TEST_VERIFY_QR "0" CACHE STRING "")
+    endif()
+
     if(NOT DEFINED SB_TEST_VERIFY_QR)
         set(SB_TEST_VERIFY_QR "1" CACHE STRING "")
     endif()
@@ -127,7 +135,7 @@ if(SB_TEST)
             SB_WORD_SIZE=${SB_TEST_WORD_SIZE}
             SB_FE_VERIFY_QR=${SB_TEST_VERIFY_QR}
             SB_FE_ASM=${SB_FE_ASM}
-            SB_DEBUG_ASSERTS
+            SB_TIME=${SB_TIME}
             SB_UNROLL=3
             SB_HMAC_DRBG_RESEED_INTERVAL=18
             SB_HMAC_DRBG_MAX_BYTES_PER_REQUEST=128
