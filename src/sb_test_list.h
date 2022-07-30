@@ -81,6 +81,7 @@ SB_DEFINE_TEST(valid_private);
 SB_DEFINE_TEST(valid_public);
 SB_DEFINE_TEST(shared_secret);
 SB_DEFINE_TEST(shared_secret_cavp_1);
+SB_DEFINE_TEST(compressed_pub_shared_secret);
 SB_DEFINE_TEST(p256_zero_x);
 SB_DEFINE_TEST(shared_secret_secp256k1);
 SB_DEFINE_TEST(sign_rfc6979);

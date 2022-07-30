@@ -117,18 +117,14 @@ static _Bool sb_test_wycheproof_hmac(const char* const filename)
     SB_TEST_ASSERT(sb_test_open(filename, &tests));
 
     while(parse_hmac_test_block(tests, &key, &msg, &tag, &result)) {
+        sb_hmac_sha256(&hmac, actual_out, key.buf, key.len, 
+                                          msg.buf, msg.len);
         if (result) {
-            sb_hmac_sha256(&hmac, actual_out, key.buf, key.len, 
-                                              msg.buf, msg.len);
-
-            SB_TEST_ASSERT_EQUAL(*tag.buf, *actual_out);
+            // The known tag and the actual output should be equal.
+            SB_TEST_ASSERT_EQUAL_2(1, *tag.buf, *actual_out, tag.len);
         } else {
-
-            sb_hmac_sha256(&hmac, actual_out, key.buf, key.len, 
-                                              msg.buf, msg.len);
-
-            // We want memcmp to return 1, which means the tags don't match.
-            SB_TEST_ASSERT(memcmp(tag.buf, actual_out, tag.len));
+            // The known tag and the actual output should not be equal.
+            SB_TEST_ASSERT_EQUAL_2(0, *tag.buf, *actual_out, tag.len);
         }
     }
 
