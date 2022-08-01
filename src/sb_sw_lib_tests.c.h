@@ -880,7 +880,7 @@ _Bool sb_test_shared_secret_cavp_1(void)
 }
 
 _Bool sb_test_compressed_pub_shared_secret(void) {
-    static const sb_sw_compressed_t wycheproof_compressed = {
+    const sb_sw_compressed_t wycheproof_compressed = {
         {
             0x62, 0xd5, 0xbd, 0x33, 0x72, 0xaf, 0x75, 0xfe, 
             0x85, 0xa0, 0x40, 0x71, 0x5d, 0x0f, 0x50, 0x24, 
@@ -889,7 +889,7 @@ _Bool sb_test_compressed_pub_shared_secret(void) {
         }
     };
 
-    static const sb_sw_private_t wycheproof_private = {
+    const sb_sw_private_t wycheproof_private = {
         {
             0x06, 0x12, 0x46, 0x5c, 0x89, 0xa0, 0x23, 0xab,
             0x17, 0x85, 0x5b, 0x0a, 0x6b, 0xce, 0xbf, 0xd3, 
@@ -898,7 +898,7 @@ _Bool sb_test_compressed_pub_shared_secret(void) {
         }
     };
 
-    static const sb_sw_shared_secret_t wycheproof_shared = {
+    const sb_sw_shared_secret_t wycheproof_shared = {
         {
             0x53, 0x02, 0x0d, 0x90, 0x8b, 0x02, 0x19, 0x32, 
             0x8b, 0x65, 0x8b, 0x52, 0x5f, 0x26, 0x78, 0x0e, 
@@ -919,6 +919,74 @@ _Bool sb_test_compressed_pub_shared_secret(void) {
                             SB_SW_CURVE_P256,
                             SB_DATA_ENDIAN_BIG));
     SB_TEST_ASSERT_EQUAL(out, wycheproof_shared);
+    return 1;
+
+}
+
+_Bool sb_test_compressed_pub_verify(void) 
+{
+    const sb_sw_compressed_t wycheproof_compressed = {
+        {
+            0x29, 0x27, 0xb1, 0x05, 0x12, 0xba, 0xe3, 0xed, 
+            0xdc, 0xfe, 0x46, 0x78, 0x28, 0x12, 0x8b, 0xad, 
+            0x29, 0x03, 0x26, 0x99, 0x19, 0xf7, 0x08, 0x60, 
+            0x69, 0xc8, 0xc4, 0xdf, 0x6c, 0x73, 0x28, 0x38
+        }
+    };
+
+    const sb_sw_signature_t  wycheproof_signature = {
+        {
+            0x2b, 0xa3, 0xa8, 0xbe, 0x6b, 0x94, 0xd5, 0xec, 
+            0x80, 0xa6, 0xd9, 0xd1, 0x19, 0x0a, 0x43, 0x6e, 
+            0xff, 0xe5, 0x0d, 0x85, 0xa1, 0xee, 0xe8, 0x59, 
+            0xb8, 0xcc, 0x6a, 0xf9, 0xbd, 0x5c, 0x2e, 0x18, 
+            0xb3, 0x29, 0xf4, 0x79, 0xa2, 0xbb, 0xd0, 0xa5, 
+            0xc3, 0x84, 0xee, 0x14, 0x93, 0xb1, 0xf5, 0x18, 
+            0x6a, 0x87, 0x13, 0x9c, 0xac, 0x5d, 0xf4, 0x08, 
+            0x7c, 0x13, 0x4b, 0x49, 0x15, 0x68, 0x47, 0xdb
+        }
+    };
+
+    const sb_byte_t wycheproof_message[] = {
+        0x31, 0x32, 0x33, 0x34, 0x30, 0x30
+    };
+
+    const size_t wycheproof_message_size = 6;
+
+    sb_sw_context_t ct;
+    sb_sw_public_t pub, bad_pub;
+    sb_sw_message_digest_t digest;
+
+    sb_hmac_drbg_state_t drbg;
+    
+    NULL_DRBG_INIT(&drbg);
+
+    SB_TEST_ASSERT_SUCCESS(
+        sb_sw_decompress_public_key(&ct, &pub, &wycheproof_compressed, 0, 
+                                    SB_SW_CURVE_P256, SB_DATA_ENDIAN_BIG));
+    
+    // Decompress with the wrong sign bit also to ensure that using this
+    // public key fails the verification
+    SB_TEST_ASSERT_SUCCESS(
+        sb_sw_decompress_public_key(&ct, &bad_pub, &wycheproof_compressed, 1, 
+                                    SB_SW_CURVE_P256, SB_DATA_ENDIAN_BIG));
+
+    // This signature should verify correctly.
+    SB_TEST_ASSERT_SUCCESS(
+        sb_sw_verify_signature_sha256(&ct, &digest, &wycheproof_signature, 
+                                      &pub, wycheproof_message, 
+                                      wycheproof_message_size, &drbg, 
+                                      SB_SW_CURVE_P256, SB_DATA_ENDIAN_BIG));
+    
+    // This verification using the public key decompressed with the wrong 
+    // sign bit should fail.
+    SB_TEST_ASSERT_ERROR(
+        sb_sw_verify_signature_sha256(&ct, &digest, &wycheproof_signature, 
+                                      &bad_pub, wycheproof_message, 
+                                      wycheproof_message_size, &drbg, 
+                                      SB_SW_CURVE_P256, SB_DATA_ENDIAN_BIG)
+    , SB_ERROR_SIGNATURE_INVALID);
+
     return 1;
 
 }
