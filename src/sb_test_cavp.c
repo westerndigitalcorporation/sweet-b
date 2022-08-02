@@ -121,7 +121,7 @@ void sb_test_buf_free(sb_test_buf_t* const buf)
     *buf = sb_test_buf_init;
 }
 
-static _Bool sb_test_read_line(FILE* const handle, sb_test_buf_t* const line)
+_Bool sb_test_read_line(FILE* const handle, sb_test_buf_t* const line)
 {
     sb_test_buf_free(line);
 

@@ -81,6 +81,8 @@ SB_DEFINE_TEST(valid_private);
 SB_DEFINE_TEST(valid_public);
 SB_DEFINE_TEST(shared_secret);
 SB_DEFINE_TEST(shared_secret_cavp_1);
+SB_DEFINE_TEST(compressed_pub_shared_secret);
+SB_DEFINE_TEST(compressed_pub_verify);
 SB_DEFINE_TEST(p256_zero_x);
 SB_DEFINE_TEST(shared_secret_secp256k1);
 SB_DEFINE_TEST(sign_rfc6979);
@@ -120,6 +122,12 @@ SB_DEFINE_TEST(shared_iter);
 SB_DEFINE_TEST(shared_iter_secp256k1);
 SB_DEFINE_TEST(sign_iter);
 SB_DEFINE_TEST(sign_iter_secp256k1);
+
+SB_DEFINE_TEST(wycheproof_ecdh_secp256k1);
+SB_DEFINE_TEST(wycheproof_ecdh_p256);
+SB_DEFINE_TEST(wycheproof_ecdsa_secp256k1);
+SB_DEFINE_TEST(wycheproof_ecdsa_p256);
+SB_DEFINE_TEST(wycheproof_hmac_sha256);
 
 #ifndef SB_TEST_TIS
 
